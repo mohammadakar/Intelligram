@@ -8,6 +8,9 @@ import ResetPassword from "./components/ResetPassword";
 import HomePage from "./components/Home";
 import { useSelector } from "react-redux";
 import Nav from "./components/Nav";
+import CreatePost from "./components/CreatePost";
+import PostDetails from "./components/PostDetails";
+import ProfilePage from "./components/ProfilePage";
 
 function App() {
 
@@ -17,15 +20,21 @@ function App() {
   return (
     <BrowserRouter>
       <ToastContainer theme="colored" position="top-center" /> 
+      <div className="pb-10">
       <Routes>
         <Route path="/" element={!user ? <LoginPage/> : <HomePage/>}/>
         <Route path="/register" element={!user ? <RegisterPage/> : <HomePage/>}/>
         <Route path="/home" element={user ? <HomePage /> : <LoginPage/>}/>
+        <Route path="/create" element={user ? <CreatePost /> :<LoginPage/>} />
+        <Route path="/profile" element={user ? <ProfilePage /> : <LoginPage/>} />
+        <Route path="/post-details" element={user ? <PostDetails /> : <LoginPage/>} />
         <Route path="/users/:userId/verify/:token" element={<VerifyEmail/>}/>
         <Route path="/forget-password" element={<ForgotPassword/>}/>
         <Route path="/reset-password/:userId/:token" element={<ResetPassword />}/>
+        
       </Routes>
-      <Nav/>
+      </div>
+      {user && <Nav/>}
     </BrowserRouter>
   )
 }

@@ -7,7 +7,7 @@ const Nav = () => {
     const isActive = (path) => location.pathname === path ? "text-blue-600" : "text-gray-600";
 
     return (
-        <nav className="fixed bottom-0 w-full bg-gradient-to-tr from-green-400 to-purple-600 p-0.5 border-t flex justify-around py-3">
+        <nav className="fixed bottom-0 left-0 right-0 w-full bg-gradient-to-tr from-green-400 to-purple-600 p-0.5 border-t flex justify-around py-3">
             <Link to="/home" className={`text-2xl hover:text-gray-800 ${isActive("/home")}`}>
                 <FaHome />
             </Link>
