@@ -35,3 +35,18 @@ export function getAllPosts() {
     }
   };
 }
+
+export function getPostById(postId) {
+  return async (dispatch,getState) => {
+    try {
+      const res = await request.get(`/api/posts/getPost/${postId}`,{
+        headers: {
+          Authorization: "Bearer " + getState().auth.user.token,
+        }
+      });
+      dispatch(postActions.setPost(res.data));
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Failed to fetch post");
+    }
+  };
+}

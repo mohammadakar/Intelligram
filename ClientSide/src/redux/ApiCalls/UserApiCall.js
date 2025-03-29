@@ -21,3 +21,15 @@ export function updateBio(bio) {
     }
 }
 }
+
+export function getUserbyId(id) {
+  return async (dispatch) => {
+    try {
+      const res = await request.get(`/api/users/getUserbyId/${id}`);
+      dispatch(userActions.setUserById(res.data));
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Failed to fetch user");
+    }
+
+  }
+}

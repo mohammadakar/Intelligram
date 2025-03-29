@@ -4,7 +4,8 @@ const initialState = {
   posts: [],
   newPost: null,
   loading: false,
-  error: null
+  error: null,
+  post: null,
 };
 
 const postSlice = createSlice({
@@ -16,6 +17,9 @@ const postSlice = createSlice({
     },
     setNewPost(state, action) {
       state.newPost = action.payload;
+    },
+    setPost(state, action) {
+      state.post = action.payload;
     },
     createPostStart(state) {
       state.loading = true;

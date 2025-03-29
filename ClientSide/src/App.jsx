@@ -11,11 +11,11 @@ import Nav from "./components/Nav";
 import CreatePost from "./components/CreatePost";
 import PostDetails from "./components/PostDetails";
 import ProfilePage from "./components/ProfilePage";
+import Post from "./components/Post";
 
 function App() {
 
   const {user}=useSelector(state => state.auth)
-  console.log(user);
   
   return (
     <BrowserRouter>
@@ -31,6 +31,7 @@ function App() {
         <Route path="/users/:userId/verify/:token" element={<VerifyEmail/>}/>
         <Route path="/forget-password" element={<ForgotPassword/>}/>
         <Route path="/reset-password/:userId/:token" element={<ResetPassword />}/>
+        <Route path="/post/:postId" element={<Post/>} />
         
       </Routes>
       </div>
