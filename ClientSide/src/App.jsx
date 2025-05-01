@@ -12,6 +12,9 @@ import CreatePost from "./components/CreatePost";
 import PostDetails from "./components/PostDetails";
 import ProfilePage from "./components/ProfilePage";
 import Post from "./components/Post";
+import Search from "./components/Search";
+import UserProfile from "./components/SearchedUserProfile";
+import Reels from "./components/Reels";
 
 function App() {
 
@@ -27,12 +30,14 @@ function App() {
         <Route path="/home" element={user ? <HomePage /> : <LoginPage/>}/>
         <Route path="/create" element={user ? <CreatePost /> :<LoginPage/>} />
         <Route path="/profile" element={user ? <ProfilePage /> : <LoginPage/>} />
+        <Route path="/search" element={user ? <Search/> : <LoginPage/> }/>
         <Route path="/post-details" element={user ? <PostDetails /> : <LoginPage/>} />
         <Route path="/users/:userId/verify/:token" element={<VerifyEmail/>}/>
         <Route path="/forget-password" element={<ForgotPassword/>}/>
         <Route path="/reset-password/:userId/:token" element={<ResetPassword />}/>
-        <Route path="/post/:postId" element={<Post/>} />
-        
+        <Route path="/post/:postId" element={user ? <Post/> : <LoginPage/>} />
+        <Route path="/profile/:userid" element={user ? <UserProfile/> : <LoginPage/>} />
+        <Route path="/reels" element={user ? <Reels/> : <LoginPage/>} />
       </Routes>
       </div>
       {user && <Nav/>}

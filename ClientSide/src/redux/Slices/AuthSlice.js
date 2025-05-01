@@ -32,6 +32,9 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         },
+        setFollowing(state, action) {
+            state.user.following = action.payload;
+        },
     },
 });
 

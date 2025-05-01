@@ -3,6 +3,8 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   bio: '',
   userById: null,
+  usersReturned:[],
+  searchedUser: null,
 };
 
 const userSlice = createSlice({
@@ -14,7 +16,13 @@ const userSlice = createSlice({
   },
   setUserById(state, action) {
       state.userById = action.payload
-  }
+  },
+  setUsersReturned(state, action) {
+      state.usersReturned = action.payload
+  },
+  setSearchedUser(state, action) {
+      state.searchedUser = action.payload
+  },
 }
 });
 

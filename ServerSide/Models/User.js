@@ -80,7 +80,11 @@ const userSchema=new mongoose.Schema({
     isAdmin:{
         type:Boolean,
         default:false,
-    }
+    },
+    isAccountPrivate:{
+        type:Boolean,
+        default:false,
+    },
 },{timestamps:true});
 
 //generate Auth token
@@ -93,7 +97,7 @@ userSchema.set("toJSON", { getters: true });
 userSchema.set("toObject", { getters: true });
 
 //User model
-const User=mongoose.model("user",userSchema);
+const User=mongoose.model("User",userSchema);
 
 //validate register user
 function validateRegisterUser(obj){

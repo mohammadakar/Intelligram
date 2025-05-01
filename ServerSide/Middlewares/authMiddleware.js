@@ -5,7 +5,10 @@ const Protect = async (req, res, next) => {
   try {
     let token;
 
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
       token = req.headers.authorization.split(' ')[1];
     }
 
@@ -14,9 +17,15 @@ const Protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  
-    const user = await User.findById(decoded.userId).select('-password');
+    console.log("Decoded token:", decoded); // Debug: see payload
 
+    // Use whichever property exists: userId or id
+    const userId = decoded.userId || decoded.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authorized, invalid token payload' });
+    }
+
+    const user = await User.findById(userId).select('-password');
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
     }
@@ -24,7 +33,7 @@ const Protect = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    console.error(error);
+    console.error("Protect middleware error:", error.message);
     res.status(401).json({ error: 'Not authorized' });
   }
 };

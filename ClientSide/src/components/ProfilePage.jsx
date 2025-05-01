@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiSettings, FiEdit } from 'react-icons/fi';
 import { BsGrid3X3 } from 'react-icons/bs';
+import { FaVideo } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllPosts } from '../redux/ApiCalls/postApiCall';
 import { updateBio } from '../redux/ApiCalls/UserApiCall';
+import videoPoster from '../vidimage/vd2.avif';
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
@@ -27,7 +29,17 @@ const ProfilePage = () => {
   };
 
   // Filter posts belonging to the user
-  const userPosts = posts.filter(post => post?.user === user?._id);
+  const userPosts = posts.filter(post => post?.user?._id === user?._id);
+
+  const isVideo = (url) => {
+    if (!url) return false;
+    try {
+      const pathname = new URL(url).pathname;
+      return pathname.match(/\.(mp4|mov|avi|webm)$/i);
+    } catch {
+      return false;
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 py-4 bg-white">
@@ -121,14 +133,32 @@ const ProfilePage = () => {
             {userPosts.map((post) => (
               <Link 
                 to={`/post/${post._id}`} 
-                className="aspect-square relative group"
+                className="aspect-square relative group overflow-hidden"
                 key={post._id}
               >
-                <img 
-                  src={post?.media?.[0]} 
-                  alt={`Post by ${user?.username}`} 
-                  className="w-full h-full object-cover"
-                />
+                {isVideo(post.media[0]) ? (
+                    <video
+                      className="w-full h-full object-cover"
+                      src={post.media[0]}
+                      poster={videoPoster}            
+                      muted
+                      preload="metadata"
+                    />
+                     ) : (
+                    <img
+                      src={post.media[0]}
+                      alt="post"
+                      className="w-full h-full object-cover"
+                    />
+                )}
+
+                {/* Video icon overlay on video posts */}
+                {isVideo(post?.media[0]) && (
+                  <FaVideo 
+                    className="absolute top-2 right-2 text-white text-2xl drop-shadow-lg"
+                  />
+                )}
+
                 <div className="hidden group-hover:flex absolute inset-0 bg-black/50 items-center justify-center gap-6 text-white">
                   <span>❤️ {post.likes?.length || 0}</span>
                   <span>💬 {post.comments?.length || 0}</span>

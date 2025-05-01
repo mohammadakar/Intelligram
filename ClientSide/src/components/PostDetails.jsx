@@ -13,8 +13,11 @@ const PostDetails = () => {
   const { state } = useLocation();
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.post);
+
+  
   
   const following = useSelector((state) => state.auth.user.following) || [];
+  console.log(following);
   
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState(''); 
@@ -32,7 +35,8 @@ const PostDetails = () => {
   const handleTagChange = (selectedOptions) => {
     setTags(selectedOptions ? selectedOptions.map(option => option.value) : []);
   };
-
+  console.log(state?.file);
+  
   const handleSubmit = async () => {
     if (!state?.file) {
       toast.error('No file selected');
@@ -83,6 +87,9 @@ const PostDetails = () => {
     value: user._id,
     label: user.username,
   }));
+
+  console.log(state?.file);
+  
 
   return (
     <div className="min-h-screen bg-gray-100">
