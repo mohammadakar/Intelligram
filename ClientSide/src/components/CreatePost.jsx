@@ -1,13 +1,14 @@
+// src/components/CreatePost.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowRight } from 'react-icons/fa';
 
 const CreatePost = () => {
   const [preview, setPreview] = useState(null);
-  const [file, setFile] = useState(null);
-  const navigate = useNavigate();
+  const [file, setFile]       = useState(null);
+  const navigate              = useNavigate();
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = e => {
     const selected = e.target.files[0];
     if (selected) {
       setFile(selected);
@@ -17,11 +18,8 @@ const CreatePost = () => {
 
   const handleNext = () => {
     if (file) {
-      navigate('/post-details', { 
-        state: { 
-          preview,
-          file
-        } 
+      navigate('/post-details', {
+        state: { preview, file }
       });
     }
   };
@@ -35,11 +33,11 @@ const CreatePost = () => {
 
         <div className="flex flex-col items-center justify-center h-96">
           <input
+            id="media-upload"
             type="file"
             accept="image/*,video/*"
             onChange={handleFileSelect}
             className="hidden"
-            id="media-upload"
           />
           <label
             htmlFor="media-upload"
@@ -51,11 +49,20 @@ const CreatePost = () => {
           {preview && (
             <div className="mt-8 text-center">
               <div className="relative">
-                <img 
-                  src={preview} 
-                  alt="Preview" 
-                  className="max-h-64 mx-auto rounded-lg"
-                />
+                {file.type.startsWith('video/') ? (
+                  <video
+                    src={preview}
+                    controls
+                    className="max-h-64 mx-auto rounded-lg"
+                  />
+                ) : (
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="max-h-64 mx-auto rounded-lg"
+                  />
+                )}
+
                 <button
                   onClick={handleNext}
                   className="absolute -right-4 -bottom-4 bg-blue-500 text-white p-3 rounded-full shadow-lg"

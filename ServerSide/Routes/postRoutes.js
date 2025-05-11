@@ -10,7 +10,9 @@ const {
   getPostComments,
   editComment,
   deleteComment,
-  deletePost
+  deletePost,
+  updatePost,
+  getFeed
 } = require("../Controllers/postController");
 
 router.post("/create-post", Protect, createPost);
@@ -22,5 +24,7 @@ router.get("/:id/comments", getPostComments);
 router.put('/:id/comment/:commentId', Protect, editComment);
 router.delete('/:id/comment/:commentId', Protect, deleteComment);
 router.delete('/:id', Protect, deletePost);
+router.put('/:id', Protect, updatePost);
+router.get('/feed', Protect, getFeed);
 
 module.exports = router;

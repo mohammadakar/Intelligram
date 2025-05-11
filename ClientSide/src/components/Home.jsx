@@ -1,81 +1,57 @@
-
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { getAllPosts } from '../redux/ApiCalls/postApiCall';
+import HomeStories from '../components/HomeStories';
+import PostCard from '../components/PostCard';
+import { FiBell, FiMessageSquare } from 'react-icons/fi';
 
 const HomePage = () => {
-    // Temporary data - replace with your actual data
-    const stories = [
-        { id: 1, username: 'user1', image: 'https://via.placeholder.com/150' },
-        { id: 2, username: 'user2', image: 'https://via.placeholder.com/150' },
-        { id: 3, username: 'user3', image: 'https://via.placeholder.com/150' },
-    ];
+  const dispatch = useDispatch();
+  const { user } = useSelector(s => s.auth);
+  const { posts } = useSelector(s => s.post);
 
-    const posts = [
-        { id: 1, username: 'user1', image: 'https://via.placeholder.com/600', likes: 120 },
-        { id: 2, username: 'user2', image: 'https://via.placeholder.com/600', likes: 45 },
-    ];
+  useEffect(() => {
+    dispatch(getAllPosts());
+  }, [dispatch]);
 
-    return (
-        <div className="bg-white">
-        {/* Header */}
-        <header className="fixed top-0 w-full bg-white border-b z-10">
-            <h1 className="text-xl font-bold text-center py-4 bg-gradient-to-r from-blue-600 to-purple-600">Intelligram</h1>
-        </header>
+  const feed = posts
+    .filter(p =>
+      p.user._id === user._id ||
+      user.following.some(f => f.user === p.user._id)
+    )
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        {/* Main Content */}
-        <main className="pt-16 pb-16"> {/* Padding for header and navigation */}
-            {/* Stories Section */}
-            <div className="flex overflow-x-auto px-4 py-4 border-b">
-            {stories.map(story => (
-                <div key={story.id} className="flex flex-col items-center mx-2">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-400 to-purple-600 p-0.5">
-                    <img
-                    src={story.image}
-                    alt={story.username}
-                    className="w-full h-full rounded-full border-2 border-white"
-                    />
-                </div>
-                <span className="text-xs mt-1">{story.username}</span>
-                </div>
-            ))}
-            </div>
-
-            {/* Posts Feed */}
-            <div className="divide-y">
-            {posts.map(post => (
-                <div key={post.id} className="py-4">
-                {/* Post Header */}
-                <div className="flex items-center px-4 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-gray-200 mr-2">
-                    <img
-                        src={post.image}
-                        alt={post.username}
-                        className="w-full h-full rounded-full"
-                    />
-                    </div>
-                    <span className="font-semibold">{post.username}</span>
-                </div>
-
-                {/* Post Image */}
-                <img
-                    src={post.image}
-                    alt={`Post by ${post.username}`}
-                    className="w-full aspect-square object-cover"
-                />
-
-                {/* Engagement Buttons */}
-                <div className="px-4 pt-2">
-                    <div className="flex space-x-4">
-                    <button className="text-2xl">❤️</button>
-                    <button className="text-2xl">💬</button>
-                    </div>
-                    <p className="font-semibold mt-1">{post.likes} likes</p>
-                </div>
-                </div>
-            ))}
-            </div>
-        </main>
-
+  return (
+    <div className="bg-gray-50 min-h-screen">
+      <div className="w-full bg-gradient-to-r from-blue-600 to-purple-600 shadow-sm py-3 px-4 flex justify-between items-center sticky top-0 z-40">
+        <h1 className="text-lg font-bold text-black">Intelligram</h1>
+        <div className="flex gap-4 items-center text-xl text-gray-600">
+          <button
+            className="hover:text-blue-600 transition"
+            onClick={() => alert("Notifications page coming soon!")}
+          >
+            <FiBell />
+          </button>
+          <button
+            className="hover:text-green-600 transition"
+            onClick={() => alert("Chat page coming soon!")}
+          >
+            <FiMessageSquare />
+          </button>
         </div>
-    );
+      </div>
+
+      <HomeStories />
+
+      <div className="max-w-2xl mx-auto space-y-6 p-4">
+        {feed.length ? (
+          feed.map(post => <PostCard key={post._id} post={post} />)
+        ) : (
+          <p className="text-center text-gray-500">No posts to show yet.</p>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default HomePage;

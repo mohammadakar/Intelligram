@@ -19,27 +19,25 @@ module.exports.createPost = asyncHandler(async (req, res) => {
 });
 
 module.exports.getAllPosts = asyncHandler(async (req, res) => {
-  try {
-    const posts = await Post.find()
-      .sort({ createdAt: -1 })
-      .populate('user', 'username profilePhoto isAccountPrivate')
-      .populate('comments.user', 'username profilePhoto');
-    res.json(posts);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const posts = await Post.find()
+    .sort({ createdAt: -1 })
+    .populate('user', 'username profilePhoto isAccountPrivate')
+    .populate('tags', 'username')                  
+    .populate('comments.user', 'username profilePhoto');
+  res.json(posts);
 });
 
 module.exports.getPostById = asyncHandler(async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
-    }
-    res.status(200).json(post);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  const post = await Post.findById(req.params.id)
+    .populate('user', 'username profilePhoto')
+    .populate('tags', 'username')                  
+    .populate('comments.user', 'username profilePhoto');
+
+  if (!post) {
+    res.status(404);
+    throw new Error('Post not found');
   }
+  res.json(post);
 });
 
 module.exports.toggleLike = asyncHandler(async (req, res) => {
@@ -174,4 +172,38 @@ module.exports.deletePost = asyncHandler(async (req, res) => {
 
   await post.deleteOne();
   res.status(200).json({ message: "Post deleted successfully", postId: req.params.id });
+});
+
+module.exports.updatePost = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { caption, location, tags } = req.body;
+
+    const post = await Post.findById(id);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+
+    
+    if (post.user.toString() !== req.user.id && !req.user.isAdmin) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    post.caption = caption || post.caption;
+    post.location = location || post.location;
+    post.tags = tags || post.tags;
+
+    await post.save();
+    res.status(200).json(post);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports.getFeed = asyncHandler(async (req, res) => {
+  const me = await User.findById(req.user._id).select('following');
+  const ids = [req.user._id, ...me.following.map(f=>f.user)];
+  const posts = await Post.find({ user: { $in: ids } })
+    .sort({ createdAt: -1 })
+    .populate('user','username profilePhoto')
+    .populate('comments.user','username profilePhoto');
+  res.json(posts);
 });

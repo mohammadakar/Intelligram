@@ -70,19 +70,34 @@ export function toggleFollow(userId) {
       toast.success(res.data.message);
 
       // 1) re-fetch the searched user to update follower count
-      dispatch(SearchedUser(userId));
+      await dispatch(SearchedUser(userId));
 
-      // 2) update currentUser.following (nested shape)
+      // 2) Get the searched user's full data from your user slice
+      const { searchedUser } = getState().user;
       const { user: current } = getState().auth;
+
+      // 3) Build the new `following` array
       let newFollowing;
       if (res.data.message === "Followed user") {
-        newFollowing = [ ...current.following, { user: userId } ];
+        // add a full follower object
+        newFollowing = [
+          ...current.following,
+          {
+            user: searchedUser._id,
+            username: searchedUser.username,
+            profilePhoto: searchedUser.profilePhoto
+          }
+        ];
       } else {
-        newFollowing = current.following.filter(f => f.user !== userId);
+        // filter out by ID
+        newFollowing = current.following.filter(
+          f => f.user.toString() !== userId
+        );
       }
 
-      // update Redux + localStorage
+      // 4) Update Redux & localStorage
       dispatch(authActions.setFollowing(newFollowing));
+
       const stored = JSON.parse(localStorage.getItem("userinfo"));
       localStorage.setItem(
         "userinfo",
@@ -94,3 +109,74 @@ export function toggleFollow(userId) {
   };
 }
 
+export function toggleSavePost(postId) {
+  return async (dispatch, getState) => {
+    try {
+      const token = getState().auth.user.token;
+      const res = await request.put(
+        `/api/users/save-post/${postId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(res.data.message);
+
+      // Update both slices:
+      dispatch(userActions.setSavedPosts(res.data.savedPosts));
+      dispatch(authActions.setAuthSavedPosts(res.data.savedPosts));
+
+      // Persist to localStorage:
+      const stored = JSON.parse(localStorage.getItem('userinfo'));
+      localStorage.setItem(
+        'userinfo',
+        JSON.stringify({ ...stored, savedPosts: res.data.savedPosts })
+      );
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save post');
+    }
+  };
+}
+
+export function removeFollower(userId) {
+  return async (dispatch, getState) => {
+    try {
+      const token = getState().auth.user.token;
+      const res   = await request.delete(
+        `/api/users/remove-follower/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(res.data.message);
+
+      // 1) update Redux state
+      dispatch(authActions.setFollowers(res.data.followers));
+
+      // 2) grab the _entire_ updated user from Redux 
+      const updatedUser = getState().auth.user;
+
+      // 3) overwrite localStorage in one go
+      localStorage.setItem("userinfo", JSON.stringify(updatedUser));
+
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to remove follower");
+    }
+  };
+}
+
+export function updateProfilePhotoBackend({ url, publicId }) {
+  return async (dispatch, getState) => {
+    try {
+      const token = getState().auth.user.token;
+      const res = await request.put(
+        "/api/users/profile-photo",
+        { url, publicId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const updated = { ...getState().auth.user, profilePhoto: res.data.profilePhoto };
+      dispatch(authActions.login(updated));
+      localStorage.setItem("userinfo", JSON.stringify(updated));
+      toast.success("Profile picture updated");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update profile picture");
+      throw err;
+    }
+  };
+}

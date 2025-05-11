@@ -35,6 +35,13 @@ const authSlice = createSlice({
         setFollowing(state, action) {
             state.user.following = action.payload;
         },
+        setAuthSavedPosts(state, action) {
+            if (state.user) state.user.savedPosts = action.payload;
+        },
+        setFollowers(state, action) {
+            state.user.followers = action.payload;
+            localStorage.setItem("userinfo", JSON.stringify(state.user));
+        },
     },
 });
 

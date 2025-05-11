@@ -151,3 +151,27 @@ export function deletePost(postId) {
     }
   };
 }
+
+export function editPost(postId, updatedData) {
+  return async (dispatch, getState) => {
+  try {
+    const { data } = await request.put(`/api/posts/${postId}`, updatedData, {
+      headers: {
+        Authorization: "Bearer " + getState().auth.user.token
+      },
+    });
+    dispatch({ type: "EDIT_POST_SUCCESS", payload: data });
+  } catch (error) {
+    console.error(error.response?.data || error.message);
+  }
+};
+}
+
+export function getFeed() {
+  return async (dispatch, getState) => {
+    const { data } = await request.get('/api/posts/feed', {
+      headers: { Authorization: `Bearer ${getState().auth.user.token}` }
+    });
+    dispatch(postActions.setPosts(data));
+  };
+}

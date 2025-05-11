@@ -18,6 +18,8 @@ app.use('/api/auth', require("./Routes/AuthRoute"));
 app.use("/api/password", require("./Routes/passwordRoute"));
 app.use("/api/posts", require("./Routes/postRoutes"));
 app.use("/api/users", require("./Routes/UserRoute"));
+app.use('/api/stories', require('./Routes/storyRoute'));
+
 
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("Connected to DB"))

@@ -24,51 +24,27 @@ const userSchema=new mongoose.Schema({
         }
     },
     faceEmbeddings: {
-        // Use Mixed so legacy string values are allowed
-        type: mongoose.Schema.Types.Mixed,
-        default: [],
-        get: function(value) {
-            // If value is already an array of numbers, return it
-            if (Array.isArray(value) && typeof value[0] === "number") {
-                return value;
-            }
-            // If it's a string, try to fix it:
-            if (typeof value === "string") {
-                try {
-                    // Replace single quotes with double quotes for valid JSON
-                    let fixed = value.replace(/'/g, '"');
-                    let parsed = JSON.parse(fixed);
-                    // If parsed is an array with one element that is an object, convert it:
-                    if (Array.isArray(parsed) && parsed.length === 1 && typeof parsed[0] === "object") {
-                        let newArr = [];
-                        // Assuming keys "0" to "127"
-                        for (let i = 0; i < 128; i++) {
-                            newArr.push(Number(parsed[0][i]));
-                        }
-                        return newArr;
-                    }
-                    // Otherwise, if parsed is an array of numbers, return it
-                    if (Array.isArray(parsed)) {
-                        return parsed;
-                    }
-                } catch (e) {
-                    console.error("Error parsing legacy embedding:", e);
-                    return [];
-                }
-            }
-            return [];
-        }
-    },
+        type: [Number],
+        default: []
+      },
     following: [{
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        text: String,
-        createdAt: { type: Date, default: Date.now }
-    }],
-    followers: [{
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        text: String,
-        createdAt: { type: Date, default: Date.now }
-    }],
+        user:        { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        username:    String,
+        profilePhoto: {
+          url:      String,
+          publicId: String
+        },
+        createdAt:   { type: Date, default: Date.now }
+      }],
+      followers: [{
+        user:        { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        username:    String,
+        profilePhoto: {
+          url:      String,
+          publicId: String
+        },
+        createdAt:   { type: Date, default: Date.now }
+      }],
     bio:{
         type:String,
         default:"",
@@ -85,6 +61,10 @@ const userSchema=new mongoose.Schema({
         type:Boolean,
         default:false,
     },
+    savedPosts:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"Post"
+    }]
 },{timestamps:true});
 
 //generate Auth token

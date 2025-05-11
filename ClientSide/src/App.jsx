@@ -15,6 +15,9 @@ import Post from "./components/Post";
 import Search from "./components/Search";
 import UserProfile from "./components/SearchedUserProfile";
 import Reels from "./components/Reels";
+import StoryUploader from "./components/StoryUploader";
+import FollowersList from "./components/FollowersList";
+import FollowingList from "./components/FollowingList";
 
 function App() {
 
@@ -38,6 +41,9 @@ function App() {
         <Route path="/post/:postId" element={user ? <Post/> : <LoginPage/>} />
         <Route path="/profile/:userid" element={user ? <UserProfile/> : <LoginPage/>} />
         <Route path="/reels" element={user ? <Reels/> : <LoginPage/>} />
+        <Route path="/story/upload" element={<StoryUploader />} />
+        <Route path="/followers" element={<FollowersList />} />
+        <Route path="/following" element={<FollowingList />} />
       </Routes>
       </div>
       {user && <Nav/>}

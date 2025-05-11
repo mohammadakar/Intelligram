@@ -1,318 +1,188 @@
+// controllers/authController.js
+
 const asyncHandler = require("express-async-handler");
-const { validateRegisterUser, User, validateLoginUser } = require("../Models/User");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
-const SendEmail = require("../utils/SendEmail");
+const bcrypt       = require("bcryptjs");
+const jwt          = require("jsonwebtoken");
+const crypto       = require("crypto");
+const { User, validateRegisterUser, validateLoginUser } = require("../Models/User");
 const { VerificationToken } = require("../Models/VerificationToken");
+const SendEmail    = require("../utils/SendEmail");
 
-// Euclidean distance function
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Euclidean distance between two equal-length vectors
 function euclideanDistance(a, b) {
-    if (a.length !== b.length) return Infinity;
-    let sum = 0;
-    for (let i = 0; i < a.length; i++) {
-        sum += Math.pow(a[i] - b[i], 2);
-    }
-    return Math.sqrt(sum);
+  if (a.length !== b.length) return Infinity;
+  return Math.sqrt(a.reduce((sum, v, i) => sum + (v - b[i]) ** 2, 0));
 }
 
-// Normalization helper: converts an embedding to a unit vector.
-function normalize(embedding) {
-    const norm = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-    if (norm === 0) return embedding;
-    return embedding.map(val => val / norm);
+// Normalize a vector to unit length
+function normalize(vec) {
+  const norm = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
+  if (!norm) return vec;
+  return vec.map(v => v / norm);
 }
 
-// Register new account
+// Build the unified user response (with token, profile, follow, savedPosts, etc.)
+function generateUserResponse(user) {
+  const token = jwt.sign(
+    { id: user._id, isAdmin: user.isAdmin, username: user.username },
+    process.env.JWT_SECRET,
+    { expiresIn: "3h" }
+  );
+  return {
+    _id:          user._id,
+    isAdmin:      user.isAdmin,
+    profilePhoto: user.profilePhoto,
+    token,
+    username:     user.username,
+    following:    user.following,
+    followers:    user.followers,
+    bio:          user.bio,
+    savedPosts:   user.savedPosts
+  };
+}
+
+// ─── Register ─────────────────────────────────────────────────────────────────
+
 module.exports.RegisterUser = asyncHandler(async (req, res) => {
-    const { error } = validateRegisterUser(req.body);
-    if (error) {
-        return res.status(400).json({ message: error.details[0].message });
-    }
+  const { error } = validateRegisterUser(req.body);
+  if (error) return res.status(400).json({ message: error.details[0].message });
 
-    let user = await User.findOne({ email: req.body.email });
-    if (user) {
-        return res.status(400).json({ message: "User already exists!" });
-    }
+  if (await User.findOne({ email: req.body.email })) {
+    return res.status(400).json({ message: "User already exists!" });
+  }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+  const salt  = await bcrypt.genSalt(10);
+  const hash  = await bcrypt.hash(req.body.password, salt);
+  const user  = new User({
+    username:       req.body.username,
+    email:          req.body.email,
+    password:       hash,
+    faceEmbeddings: req.body.faceEmbeddings || []
+  });
+  await user.save();
 
-    user = new User({
-        username: req.body.username,
-        email: req.body.email,
-        password: hashedPassword,
-        faceEmbeddings: req.body.faceEmbeddings, // Should be an array of numbers
-    });
-    await user.save();
+  // create & email verification token
+  const vtoken = new VerificationToken({
+    userId: user._id,
+    token:  crypto.randomBytes(32).toString("hex")
+  });
+  await vtoken.save();
 
-    const verificationToken = new VerificationToken({
-        userId: user._id,
-        token: crypto.randomBytes(32).toString("hex"),
-    });
-    await verificationToken.save();
+  const link = `${process.env.CLIENT_DOMAIN}/users/${user._id}/verify/${vtoken.token}`;
+  await SendEmail(user.email, "Verify Your Email", `<p>Click to verify:</p><a href="${link}">${link}</a>`);
 
-    const link = `${process.env.CLIENT_DOMAIN}/users/${user._id}/verify/${verificationToken.token}`;
-
-    const htmlTemplate = `
-        <div>
-          <p>Click on the link below to verify your email</p>
-          <a href="${link}">Verify</a>
-        </div>
-    `;
-
-    await SendEmail(user.email, "Verify Your Email", htmlTemplate);
-
-    res.status(201).json({ message: "We sent to you an email, please verify your email address" });
+  res.status(201).json({ message: "Verification email sent" });
 });
 
-// Login with email and password
+// ─── Traditional Login ────────────────────────────────────────────────────────
+
 module.exports.loginUser = asyncHandler(async (req, res) => {
-    const { error } = validateLoginUser(req.body);
-    if (error) {
-        return res.status(400).json({ message: error.details[0].message });
+  const { error } = validateLoginUser(req.body);
+  if (error) return res.status(400).json({ message: error.details[0].message });
+
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) return res.status(400).json({ message: "Invalid email or password" });
+
+  const match = await bcrypt.compare(req.body.password, user.password);
+  if (!match) return res.status(400).json({ message: "Invalid email or password" });
+
+  if (!user.isAccountVerified) {
+    // resend verification link
+    let v = await VerificationToken.findOne({ userId: user._id });
+    if (!v) {
+      v = new VerificationToken({ userId: user._id, token: crypto.randomBytes(32).toString("hex") });
+      await v.save();
     }
+    const link = `${process.env.CLIENT_DOMAIN}/users/${user._id}/verify/${v.token}`;
+    await SendEmail(user.email, "Verify Your Email", `<a href="${link}">${link}</a>`);
+    return res.status(400).json({ message: "Please verify your email first" });
+  }
 
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) {
-        return res.status(400).json({ message: "Invalid email or password!" });
-    }
-
-    const isPasswordMatch = await bcrypt.compare(req.body.password, user.password);
-    if (!isPasswordMatch) {
-        return res.status(400).json({ message: "Invalid email or password!" });
-    }
-
-    if (!user.isAccountVerified) {
-        let verificationToken = await VerificationToken.findOne({ userId: user._id });
-        if (!verificationToken) {
-            verificationToken = new VerificationToken({
-                userId: user._id,
-                token: crypto.randomBytes(32).toString("hex"),
-            });
-            await verificationToken.save();
-        }
-
-        const link = `${process.env.CLIENT_DOMAIN}/users/${user._id}/verify/${verificationToken.token}`;
-
-        const htmlTemplate = `
-          <div>
-              <p>Click on the link below to verify your email</p>
-              <a href="${link}">Verify</a>
-          </div>
-        `;
-
-        await SendEmail(user.email, "Verify Your Email", htmlTemplate);
-
-        return res.status(400).json({ message: "We sent to you an email, please verify your email address" });
-    }
-
-    const token = jwt.sign(
-        { id: user._id, isAdmin: user.isAdmin, username: user.username },
-        process.env.JWT_SECRET,
-        { expiresIn: '3h' }
-    );
-
-    res.status(200).json({
-        _id: user._id,
-        isAdmin: user.isAdmin,
-        profilePhoto: user.profilePhoto,
-        token,
-        username: user.username,
-        following: user.following,
-        followers: user.followers,
-        bio: user.bio,
-    });
+  res.status(200).json(generateUserResponse(user));
 });
 
-// Login with your face id
+// ─── Face-ID Login ────────────────────────────────────────────────────────────
+
 module.exports.FaceIdLogin = asyncHandler(async (req, res) => {
-    try {
-        const { embedding } = req.body; // Expect a plain array from the client
-        if (!embedding || !Array.isArray(embedding)) {
-            return res.status(400).json({ message: "Invalid embedding provided" });
-        }
-        console.log("Received embedding (length):", embedding.length);
+  const { embedding } = req.body;
+  if (!Array.isArray(embedding)) {
+    return res.status(400).json({ message: "Invalid face embedding" });
+  }
 
-        // Normalize the received embedding
-        const normalizedReceived = normalize(embedding);
+  const received = normalize(embedding);
 
-        const users = await User.find();
-        let matchedAccounts = [];
+  // only consider verified accounts
+  const users = await User.find({ isAccountVerified: true });
+  const scored = users.map(u => {
+    // stored faceEmbeddings might be a mixed type; ensure it's an array
+    let stored = Array.isArray(u.faceEmbeddings) ? u.faceEmbeddings : [];
+    const dist   = euclideanDistance(normalize(stored), received);
+    return { user: u, dist };
+  });
 
-        for (let user of users) {
-            let storedEmbedding = user.faceEmbeddings;
-            if (!storedEmbedding) {
-                console.log("Skipping user (no embedding stored)");
-                continue;
-            }
-            // If storedEmbedding is not an array, try to parse it
-            if (!Array.isArray(storedEmbedding)) {
-                try {
-                    storedEmbedding = JSON.parse(storedEmbedding);
-                } catch (err) {
-                    console.log("Skipping user due to invalid stored embedding format");
-                    continue;
-                }
-            }
-            // If storedEmbedding is an array with one element and that element is a string, try to parse that element
-            if (storedEmbedding.length === 1 && typeof storedEmbedding[0] === "string") {
-                try {
-                    let fixed = storedEmbedding[0].replace(/'/g, '"');
-                    let parsed = JSON.parse(fixed);
-                    if (Array.isArray(parsed) && parsed.length === normalizedReceived.length) {
-                        storedEmbedding = parsed;
-                    } else if (Array.isArray(parsed) && parsed.length === 1 && typeof parsed[0] === "object") {
-                        // In case parsed is like [ { '0': ..., '1': ..., ... } ]
-                        let newEmbedding = [];
-                        for (let i = 0; i < normalizedReceived.length; i++) {
-                            newEmbedding.push(Number(parsed[0][i]));
-                        }
-                        storedEmbedding = newEmbedding;
-                    } else {
-                        console.log("Skipping user due to unexpected parsed structure");
-                        continue;
-                    }
-                } catch (e) {
-                    console.log("Skipping user due to invalid stored embedding string format", e);
-                    continue;
-                }
-            }
-            // If storedEmbedding is still an array with one element but that element is an object,
-            // then attempt to convert it.
-            if (storedEmbedding.length === 1 && typeof storedEmbedding[0] === "object") {
-                const obj = storedEmbedding[0];
-                let newEmbedding = [];
-                for (let i = 0; i < normalizedReceived.length; i++) {
-                    newEmbedding.push(Number(obj[i]));
-                }
-                storedEmbedding = newEmbedding;
-            }
+  // sort by distance
+  scored.sort((a, b) => a.dist - b.dist);
 
-            // Now storedEmbedding should be a plain array of numbers.
-            if (!Array.isArray(storedEmbedding) || storedEmbedding.length !== normalizedReceived.length) {
-                console.log(
-                    "Skipping user due to invalid stored embedding length:",
-                    Array.isArray(storedEmbedding) ? storedEmbedding.length : "not an array",
-                    "expected:", normalizedReceived.length
-                );
-                continue;
-            }
-            console.log("Stored embedding length:", storedEmbedding.length, "vs. Received embedding length:", normalizedReceived.length);
+  const THRESHOLD = 0.25; // max acceptable distance
+  const MARGIN    = 0.05; // required gap to runner-up
 
-            const normalizedStored = normalize(storedEmbedding);
-            const distance = euclideanDistance(normalizedStored, normalizedReceived);
-            console.log("Computed Euclidean distance:", distance);
+  const best     = scored[0];
+  const runnerUp = scored[1];
 
-            // Use a strict threshold; adjust this value based on your data
-            if (distance < 0.3) {
-                if (!user.isAccountVerified) {
-                    let verificationToken = await VerificationToken.findOne({ userId: user._id });
-                    if (!verificationToken) {
-                        verificationToken = new VerificationToken({
-                            userId: user._id,
-                            token: crypto.randomBytes(32).toString("hex")
-                        });
-                        await verificationToken.save();
-                    }
-                    const link = `${process.env.CLIENT_DOMAIN}/users/${user._id}/verify/${verificationToken.token}`;
-                    const htmlTemplate = `
-                        <div>
-                          <p>Click on the link below to verify your email</p>
-                          <a href="${link}">Verify</a>
-                        </div>
-                    `;
-                    await SendEmail(user.email, "Verify Your Email", htmlTemplate);
-                    return res.status(400).json({ message: "We sent to you an email, please verify your email address" });
-                }
-                matchedAccounts.push(user);
-            }
-        }
+  // if nobody is close enough
+  if (!best || best.dist > THRESHOLD) {
+    return res.status(401).json({ message: "Face not recognized" });
+  }
 
-        if (matchedAccounts.length === 0) {
-            return res.status(401).json({ message: "Face not recognized" });
-        } else if (matchedAccounts.length === 1) {
-            const user = matchedAccounts[0];
-            const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || "secret", { expiresIn: "3h" });
-            return res.status(200).json({ 
-                _id: user._id,
-                isAdmin: user.isAdmin,
-                profilePhoto: user.profilePhoto,
-                token,
-                username: user.username,
-                following: user.following,
-                followers: user.followers,
-                bio: user.bio,
-                multiple: false
-            });
-        } else {
-            const accounts = matchedAccounts.map(user => ({
-                _id: user._id,
-                username: user.username,
-                email: user.email,
-                profilePhoto: user.profilePhoto
-            }));
-            return res.status(200).json({
-                multiple: true,
-                accounts: accounts
-            });
-        }
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server error during face login" });
-    }
+  // if unambiguous (only one below threshold or big gap to runner-up)
+  if (!runnerUp || (runnerUp.dist - best.dist) > MARGIN) {
+    return res.status(200).json(generateUserResponse(best.user));
+  }
+
+  // otherwise ambiguous → return list of all matching accounts
+  const matches = scored
+    .filter(s => s.dist <= THRESHOLD)
+    .map(s => ({
+      _id:          s.user._id,
+      username:     s.user.username,
+      profilePhoto: s.user.profilePhoto
+    }));
+
+  res.status(200).json({ multiple: true, accounts: matches });
 });
 
+// ─── Email Verification ───────────────────────────────────────────────────────
 
-
-
-// Verify your account after registration
 module.exports.verifyUserAccountCtrl = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.userId);
-    if (!user) {
-        return res.status(400).json({ message: "Invalid link" });
-    }
+  const user = await User.findById(req.params.userId);
+  if (!user) return res.status(400).json({ message: "Invalid link" });
 
-    const verificationToken = await VerificationToken.findOne({
-        userId: user._id,
-        token: req.params.token,
-    });
+  const vtoken = await VerificationToken.findOne({
+    userId: user._id,
+    token:  req.params.token
+  });
+  if (!vtoken) return res.status(400).json({ message: "Invalid link" });
 
-    if (!verificationToken) {
-        return res.status(400).json({ message: "Invalid link" });
-    }
+  user.isAccountVerified = true;
+  await user.save();
+  await VerificationToken.deleteOne({ _id: vtoken._id });
 
-    user.isAccountVerified = true;
-    await user.save();
-
-    await VerificationToken.deleteOne({ _id: verificationToken._id });
-
-    res.status(200).json({ message: "Your account verified" });
+  res.status(200).json({ message: "Account verified" });
 });
 
-// Select account you want to login if you have more than one with the same face id
+// ─── Select from Multiple Face-ID Matches ───────────────────────────────────
+
 module.exports.selectAccount = asyncHandler(async (req, res) => {
-    const { accountId } = req.body;
-    if (!accountId) {
-        return res.status(400).json({ message: "Account ID is required" });
-    }
-    const user = await User.findById(accountId);
-    if (!user) {
-        return res.status(400).json({ message: "User not found" });
-    }
-    if (!user.isAccountVerified) {
-        return res.status(400).json({ message: "Account is not verified" });
-    }
-    const token = jwt.sign(
-        { id: user._id, isAdmin: user.isAdmin, username: user.username },
-        process.env.JWT_SECRET,
-        { expiresIn: '1h' }
-    );
-    res.status(200).json({
-        _id: user._id,
-        isAdmin: user.isAdmin,
-        profilePhoto: user.profilePhoto,
-        token,
-        username: user.username,
-    });
+  const { accountId } = req.body;
+  if (!accountId) return res.status(400).json({ message: "Account ID required" });
+
+  const user = await User.findById(accountId);
+  if (!user || !user.isAccountVerified) {
+    return res.status(400).json({ message: "Invalid or unverified account" });
+  }
+
+  // now send exactly the same shape as traditional login
+  res.status(200).json(generateUserResponse(user));
 });

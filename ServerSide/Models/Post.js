@@ -6,8 +6,9 @@ const postSchema = new mongoose.Schema({
   },
   caption: String,
   location: String,
-  tags: [{ 
-    type: mongoose.Schema.Types.ObjectId, ref: 'User' 
+  tags: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }],
   media: [{ 
     type: String, required: true  

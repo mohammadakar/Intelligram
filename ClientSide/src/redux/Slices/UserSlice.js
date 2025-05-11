@@ -5,6 +5,7 @@ const initialState = {
   userById: null,
   usersReturned:[],
   searchedUser: null,
+  savedPosts:[]
 };
 
 const userSlice = createSlice({
@@ -23,6 +24,9 @@ const userSlice = createSlice({
   setSearchedUser(state, action) {
       state.searchedUser = action.payload
   },
+  setSavedPosts(state, action) {
+      state.savedPosts = action.payload;
+  }
 }
 });
 

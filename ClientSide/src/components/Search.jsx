@@ -26,9 +26,6 @@ const Search = () => {
   const publicPosts = posts
     .filter(p => p?.user?.isAccountPrivate === false)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  console.log(posts);
-  console.log("public"+publicPosts);
   
 
   const isVideo = url => {

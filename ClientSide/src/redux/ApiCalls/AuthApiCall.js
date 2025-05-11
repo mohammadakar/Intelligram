@@ -37,25 +37,26 @@ export function loginUser(user) {
     }
 }
 
-export function FaceLogin(embedding) {
+export function FaceLogin({ embedding }) {
     return async (dispatch) => {
-        try {
-            // Convert the embedding (e.g. a Float32Array) into a plain array
-            const payload = { embedding: Array.from(embedding) };
-            const res = await request.post("/api/auth/faceLogin", payload);
-            if (res.data.multiple) {
-                return { multiple: true, accounts: res.data.accounts };
-            } else {
-                dispatch(authActions.login(res.data));
-                toast.success("Logged in successfully");
-                return { multiple: false };
-            }
-        } catch (error) {
-            toast.error(error?.response?.data?.message);
-            throw error;
+      try {
+        // embedding is already the array you passed in:
+        const res = await request.post("/api/auth/faceLogin", { embedding });
+        if (res.data.multiple) {
+          // ambiguous matches: return that list
+          return { multiple: true, accounts: res.data.accounts };
+        } else {
+          // single match → log in
+          dispatch(authActions.login(res.data));
+          toast.success("Logged in successfully");
+          return { multiple: false };
         }
+      } catch (error) {
+        toast.error(error?.response?.data?.message || "Face login failed");
+        throw error;
+      }
     }
-}
+  }
 
 export function verifyEmail(userId, token) {
     return async (dispatch) => {

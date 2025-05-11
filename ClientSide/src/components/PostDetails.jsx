@@ -1,5 +1,5 @@
 // PostDetails.jsx
-import { useState } from 'react';
+import {  useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
@@ -13,11 +13,16 @@ const PostDetails = () => {
   const { state } = useLocation();
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.post);
-
+  
   
   
   const following = useSelector((state) => state.auth.user.following) || [];
   console.log(following);
+  
+  
+
+  
+  
   
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState(''); 
@@ -35,7 +40,6 @@ const PostDetails = () => {
   const handleTagChange = (selectedOptions) => {
     setTags(selectedOptions ? selectedOptions.map(option => option.value) : []);
   };
-  console.log(state?.file);
   
   const handleSubmit = async () => {
     if (!state?.file) {
@@ -82,13 +86,11 @@ const PostDetails = () => {
     }
   };
 
-  // Prepare options for tagging from the following list
-  const tagOptions = following.map(user => ({
-    value: user._id,
-    label: user.username,
+  const tagOptions = (following||[]).map(f => ({
+    value: f.user, label: f.username
   }));
-
-  console.log(state?.file);
+  console.log(tagOptions);
+  
   
 
   return (
@@ -100,13 +102,23 @@ const PostDetails = () => {
 
         <div className="p-4">
           <div className="mb-4">
-            {state?.preview && (
-              <img 
-                src={state.preview} 
-                alt="Post preview" 
-                className="w-full h-64 object-cover rounded-lg"
-              />
-            )}
+            <div className="mt-8 text-center">
+                <div className="relative">
+                  {state.file.type.startsWith('video/') ? (
+                    <video
+                      src={state.preview}
+                      controls
+                      className="max-h-64 mx-auto rounded-lg"
+                    />
+                  ) : (
+                    <img
+                      src={state.preview}
+                      alt="Preview"
+                      className="max-h-64 mx-auto rounded-lg"
+                    />
+                  )}
+                  </div>
+            </div>
           </div>
 
           <div className="space-y-4">

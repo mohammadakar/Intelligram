@@ -45,7 +45,7 @@ const SearchedUserProfile = () => {
     }
   };
 
-  const isFollowing = currentUser?.following.some(f => f.user === userid);
+  const isFollowing = currentUser?.following?.some(f => f.user === userid);
 
   return (
     <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 py-4 bg-white">
