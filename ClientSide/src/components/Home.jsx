@@ -16,8 +16,8 @@ const HomePage = () => {
 
   const feed = posts
     .filter(p =>
-      p.user._id === user._id ||
-      user.following.some(f => f.user === p.user._id)
+      p?.user?._id === user._id ||
+      user?.following.some(f => f?.user === p.user?._id)
     )
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 

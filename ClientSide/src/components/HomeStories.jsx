@@ -16,7 +16,7 @@ export default function HomeStories() {
 
   // group by user
   const byUser = stories.reduce((map, s) => {
-    (map[s.user._id] ||= []).push(s);
+    (map[s?.user?._id] ||= []).push(s);
     return map;
   }, {});
   const entries = Object.entries(byUser);
@@ -33,7 +33,7 @@ export default function HomeStories() {
         </div>
 
         {/* Followed users’ stories */}
-        {entries.map(([uid, userStories]) => {
+        {entries?.map(([uid, userStories]) => {
           const { username, profilePhoto } = userStories[0].user;
           return (
             <div

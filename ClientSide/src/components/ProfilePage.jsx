@@ -32,8 +32,8 @@ const ProfilePage = () => {
 
   const isVideo = url => /\.(mp4|mov|avi|webm)$/i.test(new URL(url).pathname);
 
-  const userPosts  = posts.filter(p => p.user._id === user._id);
-  const savedPosts = posts.filter(p => user.savedPosts.includes(p._id));
+  const userPosts  = posts?.filter(p => p.user?._id === user?._id);
+  const savedPosts = posts?.filter(p => user?.savedPosts?.includes(p?._id));
 
   const handlePhotoClick = () => fileInputRef.current.click();
   const handleFileChange = async e => {

@@ -81,7 +81,7 @@ const PostCard = ({ post, currentUser }) => {
         <div className="px-4 pb-4 text-sm space-y-1">
           {post.comments.slice(-2).map(c => (
             <div key={c._id}>
-              <span className="font-semibold">{c.user.username}</span> {c.text}
+              <span className="font-semibold">{c?.user?.username}</span> {c.text}
             </div>
           ))}
           {post.comments.length > 2 && (
