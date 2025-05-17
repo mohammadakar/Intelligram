@@ -7,6 +7,12 @@ const storySlice = createSlice({
     setStories(state, action) {
       state.stories = action.payload;
     },
+    updateLikes(state, action) {
+    const { storyId, likes } = action.payload;
+    const s = state.stories.find(s => s._id === storyId);
+    if (s) s.likes = likes;
+    },
+    
   }
 });
 

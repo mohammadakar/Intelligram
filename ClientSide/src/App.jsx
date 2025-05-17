@@ -18,6 +18,8 @@ import Reels from "./components/Reels";
 import StoryUploader from "./components/StoryUploader";
 import FollowersList from "./components/FollowersList";
 import FollowingList from "./components/FollowingList";
+import Settings from "./components/Settings";
+import Chat from "./components/Chat";
 
 function App() {
 
@@ -42,8 +44,10 @@ function App() {
         <Route path="/profile/:userid" element={user ? <UserProfile/> : <LoginPage/>} />
         <Route path="/reels" element={user ? <Reels/> : <LoginPage/>} />
         <Route path="/story/upload" element={<StoryUploader />} />
-        <Route path="/followers" element={<FollowersList />} />
-        <Route path="/following" element={<FollowingList />} />
+        <Route path="/followers" element={user ? <FollowersList/> : <LoginPage/>} />
+        <Route path="/following" element={user ? <FollowingList/> : <LoginPage/>} />
+        <Route path="/settings" element={user ? <Settings/> : <LoginPage/>} />
+        <Route path="/chat" element={user ? <Chat/> : <LoginPage/>} />
       </Routes>
       </div>
       {user && <Nav/>}

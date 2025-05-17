@@ -180,3 +180,61 @@ export function updateProfilePhotoBackend({ url, publicId }) {
     }
   };
 }
+
+export function updateProfile({ username, isAccountPrivate }) {
+  return async (dispatch, getState) => {
+    try {
+      const { token } = getState().auth.user;
+      const res = await request.put(
+        "/api/users/update-profile",
+        { username, isAccountPrivate },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const updatedUser = { ...res.data, token };
+      dispatch(authActions.login(updatedUser));
+      toast.success("Profile updated");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update profile");
+    }
+  };
+}
+
+// change password
+export function updatePassword({ currentPassword, newPassword }) {
+  return async (dispatch, getState) => {
+    try {
+      const token = getState().auth.user.token;
+      await request.put(
+        "/api/users/update-password",
+        { currentPassword, newPassword },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Password changed");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to change password");
+    }
+  };
+}
+
+// delete account
+export function deleteAccount() {
+  return async (dispatch, getState) => {
+    try {
+      const token = getState().auth.user.token;
+      await request.delete("/api/users/delete-account", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.info("Account deleted");
+      dispatch(authActions.logout());
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete account");
+    }
+  };
+}
+
+// logout (frontend only)
+export function logoutUser() {
+  return dispatch => {
+    dispatch(authActions.logout());
+  };
+}

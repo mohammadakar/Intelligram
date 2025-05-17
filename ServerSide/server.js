@@ -19,6 +19,7 @@ app.use("/api/password", require("./Routes/passwordRoute"));
 app.use("/api/posts", require("./Routes/postRoutes"));
 app.use("/api/users", require("./Routes/UserRoute"));
 app.use('/api/stories', require('./Routes/storyRoute'));
+app.use('/api/chats', require('./Routes/ChatRoutes'));
 
 
 mongoose.connect(process.env.MONGO_URI)

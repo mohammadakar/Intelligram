@@ -1,5 +1,17 @@
 const mongoose = require('mongoose');
 
+const viewSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
+  },
+  viewedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const storySchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -32,7 +44,9 @@ const storySchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
     expires: 60 * 60 * 24   // stories auto-expire after 1 day
-  }
+  },
+  likes:[{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],  
+  views:[viewSchema],
 });
 
 const Story = mongoose.model('Story', storySchema);

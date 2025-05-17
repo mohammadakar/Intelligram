@@ -1,3 +1,4 @@
+// src/components/Search.jsx
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { searchUsers } from '../redux/ApiCalls/UserApiCall';
@@ -7,9 +8,9 @@ import { FaVideo } from 'react-icons/fa';
 import videoPoster from '../vidimage/vd2.avif';
 
 const Search = () => {
-  const dispatch = useDispatch();
+  const dispatch        = useDispatch();
   const { usersReturned } = useSelector(state => state.user);
-  const { posts } = useSelector(state => state.post);
+  const { posts }       = useSelector(state => state.post);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch all posts on mount
@@ -22,11 +23,10 @@ const Search = () => {
     dispatch(searchUsers(searchQuery));
   };
 
-  // Only show public posts
+  // Only show public posts, sorted newest first
   const publicPosts = posts
     .filter(p => p?.user?.isAccountPrivate === false)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  
 
   const isVideo = url => {
     if (!url) return false;
@@ -38,7 +38,7 @@ const Search = () => {
   };
 
   return (
-    <div className="search p-4 max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-white p-4 max-w-4xl mx-auto space-y-6">
       {/* Search Bar */}
       <div className="flex gap-2">
         <input
@@ -46,7 +46,7 @@ const Search = () => {
           placeholder="Search users..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          className="flex-grow border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring focus:border-blue-300"
+          className="flex-grow border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring focus:border-blue-300 bg-white"
         />
         <button
           onClick={handleSearch}
@@ -58,22 +58,22 @@ const Search = () => {
 
       {/* User Results */}
       {usersReturned.length > 0 && (
-        <div className="search-results space-y-2">
+        <div className="space-y-2 bg-white">
           {usersReturned.map(user => (
             <Link
               key={user._id}
-              to={`/profile/${user?._id}`}
-              className="flex items-center gap-3 p-2 border-b hover:bg-gray-100 rounded"
+              to={`/profile/${user._id}`}
+              className="flex items-center gap-3 p-2 border-b hover:bg-gray-50 rounded bg-white"
             >
               <img
-                src={user?.profilePhoto.url}
-                alt={user?.username}
+                src={user.profilePhoto.url}
+                alt={user.username}
                 className="w-12 h-12 rounded-full object-cover"
               />
               <div>
-                <h3 className="font-semibold">{user.username}</h3>
+                <h3 className="font-semibold text-gray-800">{user.username}</h3>
                 <p className="text-sm text-gray-500">
-                  {user?.followers.length} followers | {user.following.length} following
+                  {user.followers.length} followers | {user.following.length} following
                 </p>
               </div>
             </Link>
@@ -82,15 +82,15 @@ const Search = () => {
       )}
 
       {/* Explore Public Posts */}
-      <div>
-        <h3 className="text-xl font-semibold mb-2">Explore</h3>
+      <div className="bg-white">
+        <h3 className="text-xl font-semibold mb-2 text-gray-800">Explore</h3>
         {publicPosts.length > 0 ? (
-          <div className="grid grid-cols-3 gap-1 md:gap-4">
+          <div className="grid grid-cols-3 gap-2 md:gap-4">
             {publicPosts.map(post => (
               <Link
                 key={post._id}
                 to={`/post/${post._id}`}
-                className="aspect-square relative overflow-hidden rounded-lg bg-gray-100 group"
+                className="aspect-square relative overflow-hidden rounded-lg bg-white group"
               >
                 {isVideo(post.media[0]) ? (
                   <video

@@ -105,9 +105,9 @@ const ProfilePage = () => {
         <div className="flex-1">
           <div className="flex items-center gap-4 mb-4">
             <h2 className="text-2xl font-light">{user.username}</h2>
-            <button className="p-2 hover:bg-gray-100 rounded-full">
+            <Link to='/settings' className="p-2 hover:bg-gray-100 rounded-full">
               <FiSettings className="text-xl"/>
-            </button>
+            </Link>
           </div>
 
           <div className="flex gap-8 mb-4">

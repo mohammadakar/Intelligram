@@ -1,6 +1,7 @@
 // controllers/userController.js
 const asyncHandler = require("express-async-handler");
 const { User } = require("../Models/User");
+const bcrypt = require("bcryptjs");
 
 module.exports.updateBio = asyncHandler(async (req, res) => {
   const { bio } = req.body;
@@ -155,4 +156,43 @@ module.exports.updateProfilePhoto = asyncHandler(async (req, res) => {
   res.status(200).json({
     profilePhoto: user.profilePhoto
   });
+});
+
+module.exports.updateProfile = asyncHandler(async (req, res) => {
+  const { username, isAccountPrivate } = req.body;
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+  user.username = username ?? user.username;
+  user.isAccountPrivate = isAccountPrivate ?? user.isAccountPrivate;
+  await user.save();
+  const { password, ...rest } = user.toObject();
+  res.json(rest); console.log(rest);
+  
+});
+
+module.exports.updatePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const user = await User.findById(req.user._id).select("+password");
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+  const match = await bcrypt.compare(currentPassword, user.password);
+  if (!match) {
+    res.status(400);
+    throw new Error("Current password is incorrect");
+  }
+  const salt = await bcrypt.genSalt(10);
+  user.password = await bcrypt.hash(newPassword, salt);
+  await user.save();
+  res.json({ message: "Password updated successfully" });
+});
+
+
+module.exports.deleteAccount = asyncHandler(async (req, res) => {
+  await User.findByIdAndDelete(req.user._id);
+  res.json({ message: "Your account has been deleted" });
 });

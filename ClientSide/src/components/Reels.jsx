@@ -1,5 +1,5 @@
 // src/components/Reels.jsx
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllPosts, toggleLike } from '../redux/ApiCalls/postApiCall';
 import { toggleSavePost, toggleFollow } from '../redux/ApiCalls/UserApiCall';
@@ -9,15 +9,17 @@ import { FaHeart, FaComment, FaBookmark } from 'react-icons/fa';
 const Reels = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { posts } = useSelector(state => state.post);
-  const currentUser = useSelector(state => state.auth.user);
+  const { posts } = useSelector(s => s.post);
+  const currentUser = useSelector(s => s.auth.user);
 
-  // 1) fetch all posts
+  // grab all reels once
   useEffect(() => {
     dispatch(getAllPosts());
   }, [dispatch]);
 
-  // 2) helper to detect video URLs
+  // video refs array
+  const videoRefs = useRef([]);
+
   const isVideo = url => {
     try {
       return /\.(mp4|mov|avi|webm)$/i.test(new URL(url).pathname);
@@ -26,22 +28,24 @@ const Reels = () => {
     }
   };
 
-  // 3) only public videos
+  // only public videos
   const reels = (posts || []).filter(
-    p => isVideo(p.media?.[0]) && p.user?.isAccountPrivate === false
+    p => isVideo(p.media?.[0]) && !p.user.isAccountPrivate
   );
 
-  // 4) build a Set of followed user-IDs for fast lookup
   const followingIds = new Set(
-    (currentUser?.following || []).map(f => f?.user?.toString())
+    (currentUser.following || []).map(f => f.user.toString())
   );
+
+  const handleToggleSound = idx => {
+    videoRefs.current.forEach((vid, i) => {
+      if (vid) vid.muted = i === idx ? !vid.muted : true;
+    });
+  };
 
   return (
-    <div
-      className="h-screen overflow-y-scroll snap-y snap-mandatory"
-      style={{ scrollSnapType: 'y mandatory' }}
-    >
-      {reels.map(post => {
+    <div className="h-screen overflow-y-scroll snap-y snap-mandatory" style={{ scrollSnapType: 'y mandatory' }}>
+      {reels.map((post, idx) => {
         const liked     = post.likes.includes(currentUser._id);
         const saved     = (currentUser.savedPosts || []).includes(post._id);
         const following = followingIds.has(post.user._id);
@@ -55,16 +59,17 @@ const Reels = () => {
           >
             {/* video */}
             <video
+              ref={el => videoRefs.current[idx] = el}
               src={post.media[0]}
               autoPlay
               loop
               muted
               className="w-full h-full object-cover"
+              onClick={() => handleToggleSound(idx)}
             />
 
             {/* right-side icons */}
             <div className="absolute top-1/4 right-4 flex flex-col items-center space-y-6 text-white">
-              {/* like */}
               <button
                 onClick={() => dispatch(toggleLike(post._id))}
                 className="flex flex-col items-center"
@@ -73,7 +78,6 @@ const Reels = () => {
                 <span className="text-sm">{post.likes.length}</span>
               </button>
 
-              {/* comment */}
               <button
                 onClick={() => navigate(`/post/${post._id}`)}
                 className="flex flex-col items-center"
@@ -82,7 +86,6 @@ const Reels = () => {
                 <span className="text-sm">{post.comments.length}</span>
               </button>
 
-              {/* save */}
               <button
                 onClick={() => dispatch(toggleSavePost(post._id))}
                 className="flex flex-col items-center"
@@ -104,7 +107,6 @@ const Reels = () => {
                 </Link>
               </div>
 
-              {/* follow / following (only if not your own reel) */}
               {!isOwner && (
                 <button
                   onClick={() => dispatch(toggleFollow(post.user._id))}

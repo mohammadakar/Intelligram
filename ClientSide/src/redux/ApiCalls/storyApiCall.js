@@ -54,3 +54,52 @@ export function uploadStories(uploadFiles) {
     }
   };
 }
+
+export function toggleStoryLike(storyId) {
+  return async (dispatch, getState) => {
+    try {
+      const token = getState().auth.user.token;
+      const res   = await request.post(
+        `/api/stories/${storyId}/like`, {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      dispatch(storyActions.updateLikes({
+        storyId,
+        likes: res.data.likes
+      }));
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to like story");
+    }
+  };
+}
+
+export function viewStory(storyId) {
+  return async (dispatch, getState) => {
+    try {
+      const token = getState().auth.user.token
+      await request.post(
+        `/api/stories/${storyId}/view`, {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      // no state change here
+    } catch (err) {
+      toast.error("viewStory failed", err)
+    }
+  }
+}
+
+export function fetchStoryViews(storyId) {
+  return async (dispatch, getState) => {
+    try {
+      const token = getState().auth.user.token
+      const res = await request.get(
+        `/api/stories/${storyId}/views`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      return res.data   // [ { _id, username, profilePhoto, viewedAt }, … ]
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to fetch viewers")
+      return []
+    }
+  }
+}

@@ -4,6 +4,7 @@ import { passwordReducer } from "./Slices/PasswordSlice";
 import { postReducer } from "./Slices/postSlice";
 import { userReducer } from "./Slices/UserSlice";
 import { storyReducer } from "./Slices/storySlice";
+import { chatReducer } from "./Slices/ChatSlice";
 
 const store = configureStore({
     reducer:{
@@ -11,7 +12,8 @@ const store = configureStore({
         password:passwordReducer,
         post:postReducer,
         user:userReducer,
-        story:storyReducer
+        story:storyReducer,
+        chat:chatReducer
     }
 });
 

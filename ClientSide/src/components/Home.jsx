@@ -4,6 +4,7 @@ import { getAllPosts } from '../redux/ApiCalls/postApiCall';
 import HomeStories from '../components/HomeStories';
 import PostCard from '../components/PostCard';
 import { FiBell, FiMessageSquare } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
 
 const HomePage = () => {
   const dispatch = useDispatch();
@@ -32,12 +33,11 @@ const HomePage = () => {
           >
             <FiBell />
           </button>
-          <button
+          <Link to="/chat"
             className="hover:text-green-600 transition"
-            onClick={() => alert("Chat page coming soon!")}
           >
             <FiMessageSquare />
-          </button>
+          </Link>
         </div>
       </div>
 
