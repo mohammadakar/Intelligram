@@ -1,4 +1,3 @@
-// src/components/SettingsPage.jsx
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -7,21 +6,19 @@ import {
   deleteAccount,
   logoutUser
 } from "../redux/ApiCalls/UserApiCall";
+import swal from "sweetalert";
 
 const SettingsPage = () => {
   const dispatch = useDispatch();
   const user     = useSelector(s => s.auth.user);
 
-  // profile form
   const [username, setUsername]         = useState("");
   const [isPrivate, setIsPrivate]       = useState(false);
 
-  // password form
+ 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword]         = useState("");
 
-
-  // when `user` or its `isAccountPrivate` changes, re-sync the form
   useEffect(() => {
     if (user) {
       setUsername(user.username);
@@ -35,7 +32,6 @@ const SettingsPage = () => {
       username,
       isAccountPrivate: isPrivate
     }));
-    // after dispatch, the Redux `user` will update → our effect above re-syncs `isPrivate`
   };
 
   const handleSubmitPassword = () => {
@@ -107,9 +103,18 @@ const SettingsPage = () => {
         </button>
         <button
           onClick={() => {
-            if (window.confirm("Delete your account? This is irreversible.")) {
-              dispatch(deleteAccount());
-            }
+            swal({
+              title: "Delete Your Account?",
+              text: "This action cannot be undone.",
+              icon: "warning",
+              buttons: ["Cancel","Delete"],
+              dangerMode: true
+            }).then(ok => {
+              if (ok) {
+                dispatch(deleteAccount(user._id));
+                dispatch(logoutUser());
+              }
+            });
           }}
           className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
         >
