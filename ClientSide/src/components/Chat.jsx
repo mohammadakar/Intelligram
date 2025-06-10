@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { useDispatch, useSelector }     from 'react-redux';
+import { useEffect, useState, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   listMyChats,
   getOrCreateChat,
@@ -7,26 +7,43 @@ import {
   editMessage,
   deleteMessage,
   deleteChat
-} from '../redux/ApiCalls/chatApiCall';
-import { FiMoreVertical } from 'react-icons/fi';
+} from "../redux/ApiCalls/chatApiCall";
+import { FiMoreVertical } from "react-icons/fi";
+import { useLocation } from "react-router-dom";
 
-  const Chat = () => {
-
+const Chat = () => {
   const dispatch = useDispatch();
-  const { user } = useSelector(s => s.auth);
-  const { list, activeChat } = useSelector(s => s.chat);
-  const [otherId, setOtherId] = useState('');
-  const [text, setText]       = useState('');
+  const { user } = useSelector((s) => s.auth);
+  const { list, activeChat } = useSelector((s) => s.chat);
+  const [otherId, setOtherId] = useState("");
+  const [text, setText] = useState("");
 
-  const [msgMenuOpen, setMsgMenuOpen]   = useState(null);
+  const [msgMenuOpen, setMsgMenuOpen] = useState(null);
   const [chatMenuOpen, setChatMenuOpen] = useState(null);
-  const [editMsgId, setEditMsgId]       = useState(null);
-  const [editText, setEditText]         = useState('');
+  const [editMsgId, setEditMsgId] = useState(null);
+  const [editText, setEditText] = useState("");
 
   const msgContainerRef = useRef();
 
-  useEffect(() => { dispatch(listMyChats()); }, [dispatch]);
-  useEffect(() => { if (otherId) dispatch(getOrCreateChat(otherId)); }, [otherId, dispatch]);
+  // Read ?user=<id> from URL and auto-open that chat
+  const location = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const u = params.get("user");
+    if (u) {
+      setOtherId(u);
+      dispatch(getOrCreateChat(u));
+    }
+  }, [location.search, dispatch]);
+
+  useEffect(() => {
+    dispatch(listMyChats());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (otherId) dispatch(getOrCreateChat(otherId));
+  }, [otherId, dispatch]);
+
   useEffect(() => {
     if (msgContainerRef.current) {
       msgContainerRef.current.scrollTop = msgContainerRef.current.scrollHeight;
@@ -36,9 +53,10 @@ import { FiMoreVertical } from 'react-icons/fi';
   const handleSend = () => {
     if (!text.trim() || !activeChat) return;
     dispatch(sendMessage(activeChat._id, text));
-    setText('');
+    setText("");
   };
-  const startEdit = m => {
+
+  const startEdit = (m) => {
     setEditMsgId(m._id);
     setEditText(m.content);
     setMsgMenuOpen(null);
@@ -46,11 +64,11 @@ import { FiMoreVertical } from 'react-icons/fi';
   const saveEdit = () => {
     dispatch(editMessage(activeChat._id, editMsgId, editText));
     setEditMsgId(null);
-    setEditText('');
+    setEditText("");
   };
   const cancelEdit = () => {
     setEditMsgId(null);
-    setEditText('');
+    setEditText("");
   };
 
   return (
@@ -61,52 +79,66 @@ import { FiMoreVertical } from 'react-icons/fi';
           <select
             className="w-full p-2 border rounded"
             value={otherId}
-            onChange={e => setOtherId(e.target.value)}
+            onChange={(e) => setOtherId(e.target.value)}
           >
             <option value="">New chat…</option>
-            {user.following.map(f => (
-              <option key={f.user} value={f.user}>{f.username}</option>
+            {user.following.map((f) => (
+              <option key={f.user} value={f.user}>
+                {f.username}
+              </option>
             ))}
           </select>
         </div>
-        {list.map(chat => {
-          const other = chat.participants.find(p => p._id !== user._id);
-          const last  = chat.messages[chat.messages.length - 1];
+        {list.map((chat) => {
+          const other = chat.participants.find((p) => p._id !== user._id);
+          const last = chat.messages[chat.messages.length - 1];
           return (
             <div
               key={chat._id}
               className={`relative flex items-center px-4 py-3 cursor-pointer hover:bg-gray-50 ${
-                activeChat?._id === chat._id ? 'bg-gray-100' : ''
+                activeChat?._id === chat._id ? "bg-gray-100" : ""
               }`}
-              onClick={() => setOtherId(other._id)}
+              onClick={() => {
+                setOtherId(other._id);
+              }}
             >
-              <img src={other?.profilePhoto.url} alt=""
-                   className="w-10 h-10 rounded-full mr-3" />
+              <img
+                src={other.profilePhoto.url}
+                alt=""
+                className="w-10 h-10 rounded-full mr-3"
+              />
               <div className="flex-1">
-                <div className="font-medium truncate">{other?.username}</div>
-                {last && <div className="text-sm text-gray-500 truncate">
-                  {last.sender._id===user._id ? 'You: ' : ''}{last.content}
-                </div>}
+                <div className="font-medium truncate">{other.username}</div>
+                {last && (
+                  <div className="text-sm text-gray-500 truncate">
+                    {last.sender._id === user._id ? "You: " : ""}
+                    {last.content}
+                  </div>
+                )}
               </div>
               <button
                 className="p-1 text-gray-400 hover:text-gray-600"
-                onClick={e => {
+                onClick={(e) => {
                   e.stopPropagation();
-                  setChatMenuOpen(chatMenuOpen===chat._id?null:chat._id);
+                  setChatMenuOpen(
+                    chatMenuOpen === chat._id ? null : chat._id
+                  );
                 }}
               >
                 <FiMoreVertical />
               </button>
-              {chatMenuOpen===chat._id && (
+              {chatMenuOpen === chat._id && (
                 <div className="absolute top-12 right-4 bg-white border rounded shadow">
                   <button
                     className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                    onClick={()=>{
+                    onClick={() => {
                       dispatch(deleteChat(chat._id));
-                      if(activeChat?._id===chat._id) setOtherId('');
+                      if (activeChat?._id === chat._id) setOtherId("");
                       setChatMenuOpen(null);
                     }}
-                  >Delete Chat</button>
+                  >
+                    Delete Chat
+                  </button>
                 </div>
               )}
             </div>
@@ -120,74 +152,111 @@ import { FiMoreVertical } from 'react-icons/fi';
           <>
             <div className="flex items-center p-4 bg-white border-b">
               {(() => {
-                const o = activeChat.participants.find(p=>p._id!==user._id);
-                return <>
-                  <img src={o.profilePhoto.url} alt=""
-                       className="w-10 h-10 rounded-full mr-3" />
-                  <h3 className="font-semibold">{o.username}</h3>
-                </>;
+                const o = activeChat.participants.find(
+                  (p) => p._id !== user._id
+                );
+                return (
+                  <>
+                    <img
+                      src={o.profilePhoto.url}
+                      alt=""
+                      className="w-10 h-10 rounded-full mr-3"
+                    />
+                    <h3 className="font-semibold">{o.username}</h3>
+                  </>
+                );
               })()}
             </div>
             <div
               className="flex-1 overflow-y-auto p-4 space-y-4"
               ref={msgContainerRef}
             >
-              {activeChat.messages.map(m => {
-                const mine = m.sender._id===user._id;
+              {activeChat.messages.map((m) => {
+                const mine = m.sender._id === user._id;
                 return (
                   <div
                     key={m._id}
                     className={`relative flex items-end ${
-                      mine?'justify-end':'justify-start'
+                      mine ? "justify-end" : "justify-start"
                     }`}
                   >
                     {!mine && (
-                      <img src={m.sender.profilePhoto.url} alt=""
-                           className="w-6 h-6 rounded-full mr-2" />
+                      <img
+                        src={m.sender.profilePhoto.url}
+                        alt=""
+                        className="w-6 h-6 rounded-full mr-2"
+                      />
                     )}
                     <div className="flex items-center">
-                      <div className={`max-w-xs px-4 py-2 rounded-lg ${
-                        mine
-                          ? 'bg-blue-500 text-white rounded-br-none'
-                          : 'bg-gray-200 text-gray-800 rounded-bl-none'
-                      }`}>
-                        {editMsgId===m._id ? (
+                      <div
+                        className={`max-w-xs px-4 py-2 rounded-lg ${
+                          mine
+                            ? "bg-blue-500 text-white rounded-br-none"
+                            : "bg-gray-200 text-gray-800 rounded-bl-none"
+                        }`}
+                      >
+                        {editMsgId === m._id ? (
                           <div className="flex items-center space-x-2">
                             <input
                               className="flex-1 border rounded px-2 py-1"
                               value={editText}
-                              onChange={e=>setEditText(e.target.value)}
+                              onChange={(e) => setEditText(e.target.value)}
                             />
-                            <button onClick={saveEdit} className="text-green-600">Save</button>
-                            <button onClick={cancelEdit} className="text-red-600">Cancel</button>
+                            <button
+                              onClick={saveEdit}
+                              className="text-green-600"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="text-red-600"
+                            >
+                              Cancel
+                            </button>
                           </div>
-                        ) : m.content}
+                        ) : (
+                          m.content
+                        )}
                       </div>
                       {mine && (
                         <>
                           <button
                             className="p-1 ml-1 text-gray-400 hover:text-gray-600"
-                            onClick={()=>setMsgMenuOpen(msgMenuOpen===m._id?null:m._id)}
+                            onClick={() =>
+                              setMsgMenuOpen(
+                                msgMenuOpen === m._id ? null : m._id
+                              )
+                            }
                           >
                             <FiMoreVertical />
                           </button>
-                          {msgMenuOpen===m._id && (
+                          {msgMenuOpen === m._id && (
                             <div className="absolute top-8 right-0 bg-white border rounded shadow">
                               <button
                                 className="block px-4 py-2 text-left hover:bg-gray-100"
-                                onClick={()=>startEdit(m)}
-                              >Edit</button>
+                                onClick={() => startEdit(m)}
+                              >
+                                Edit
+                              </button>
                               <button
                                 className="block px-4 py-2 text-left hover:bg-gray-100"
-                                onClick={()=>{
-                                  dispatch(deleteMessage(activeChat._id, m._id));
+                                onClick={() => {
+                                  dispatch(
+                                    deleteMessage(activeChat._id, m._id)
+                                  );
                                   setMsgMenuOpen(null);
                                 }}
-                              >Unsend</button>
+                              >
+                                Unsend
+                              </button>
                             </div>
                           )}
-                          <img src={user.profilePhoto.url} alt=""
-                               className="w-6 h-6 rounded-full ml-2" />
+                          <img
+                            src={user.profilePhoto.url}
+                            alt=""
+                            className="w-6 h-6 rounded-full ml-2"
+                          />
                         </>
                       )}
                     </div>
@@ -199,7 +268,7 @@ import { FiMoreVertical } from 'react-icons/fi';
               <input
                 className="flex-1 border rounded-full px-4 py-2"
                 value={text}
-                onChange={e=>setText(e.target.value)}
+                onChange={(e) => setText(e.target.value)}
                 placeholder="Type a message…"
               />
               <button

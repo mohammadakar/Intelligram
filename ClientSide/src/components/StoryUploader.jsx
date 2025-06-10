@@ -67,9 +67,17 @@ const StoryUploader = ({ onClose }) => {
         {preview && (
           <div className="w-full h-64 bg-gray-200 flex items-center justify-center overflow-hidden rounded">
             {file?.type?.startsWith('video') ? (
-              <video src={preview} controls className="w-full h-full object-contain" />
+              <video
+                src={preview}
+                controls
+                className="w-full h-full object-contain"
+              />
             ) : (
-              <img src={preview} alt="" className="w-full h-full object-contain" />
+              <img
+                src={preview}
+                alt=""
+                className="w-full h-full object-contain"
+              />
             )}
           </div>
         )}
@@ -95,7 +103,10 @@ const StoryUploader = ({ onClose }) => {
         />
 
         <div className="flex justify-end gap-2 pt-4">
-          <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:underline">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:underline"
+          >
             Cancel
           </button>
           <button

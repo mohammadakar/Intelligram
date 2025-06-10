@@ -6,8 +6,8 @@ async function run() {
   await mongoose.connect(process.env.MONGO_URI);
   // Only update those that don't already have savedPosts
   const res = await User.updateMany(
-    { stories: { $exists: false } },
-    { $set: { stories: [] } }
+    { requests: { $exists: false } },
+    { $set: { requests: [] } }
   );
   console.log(`Matched ${res.matchedCount}, modified ${res.modifiedCount}`);
   await mongoose.disconnect();

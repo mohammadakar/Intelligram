@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Story       = require('../Models/Story');
 const { User } = require('../Models/User');
+const { createNotification } = require('./NotificationController');
 
 module.exports.createStories = asyncHandler(async (req, res) => {
   const userId = req.user._id;
@@ -55,6 +56,12 @@ module.exports.toggleLikeStory = asyncHandler(async (req, res) => {
     story.likes.push(req.user._id);
   }
   await story.save();
+  await createNotification({
+  user: story.user,
+  actor: userId,
+  type: "story_like",
+  reference: story._id
+});
   res.json({ likes: story.likes });
 });
 

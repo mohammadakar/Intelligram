@@ -39,7 +39,8 @@ function generateUserResponse(user) {
     following:    user.following,
     followers:    user.followers,
     bio:          user.bio,
-    savedPosts:   user.savedPosts
+    savedPosts:   user.savedPosts,
+    isAccountPrivate: user.isAccountPrivate,
   };
 }
 

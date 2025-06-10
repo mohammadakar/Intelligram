@@ -1,6 +1,7 @@
 const { Post } = require("../Models/Post");
 const asyncHandler = require("express-async-handler");
 const { User } = require("../Models/User");
+const { createNotification } = require("./NotificationController");
 
 module.exports.createPost = asyncHandler(async (req, res) => {
   try {
@@ -51,6 +52,12 @@ module.exports.toggleLike = asyncHandler(async (req, res) => {
   const alreadyLiked = post.likes.some(id => id.toString() === userId.toString());
   if (!alreadyLiked) {
     post.likes.push(userId);
+    await createNotification({
+      user:     post.user,  
+      actor:    userId,           
+      type:     "like",
+      reference: post._id
+    });
   } else {
     post.likes = post.likes.filter(id => id.toString() !== userId.toString());
   }
@@ -73,7 +80,6 @@ module.exports.addComment = asyncHandler(async (req, res) => {
     throw new Error("Post not found");
   }
 
-  
   post.comments.push({
     text,
     user: req.user._id,
@@ -81,17 +87,21 @@ module.exports.addComment = asyncHandler(async (req, res) => {
   });
   await post.save();
 
-  
+  await createNotification({ 
+  user: post.user, 
+  actor: req.user._id, 
+  type: "comment", 
+  reference: post._id 
+  });
+
   await post.populate({
     path: "comments.user",
     select: "username profilePhoto",
     model: User  
   });
 
-  
   const newComment = post.comments[post.comments.length - 1];
 
-  
   res.status(201).json(newComment);
 });
 

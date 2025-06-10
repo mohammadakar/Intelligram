@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const { init } = require("./socket");
 dotenv.config();
 
 const app = express();
@@ -20,6 +21,7 @@ app.use("/api/posts", require("./Routes/postRoutes"));
 app.use("/api/users", require("./Routes/UserRoute"));
 app.use('/api/stories', require('./Routes/storyRoute'));
 app.use('/api/chats', require('./Routes/ChatRoutes'));
+app.use('/api/notifications', require('./Routes/notificationRoutes'));
 
 
 mongoose.connect(process.env.MONGO_URI)
@@ -27,4 +29,6 @@ mongoose.connect(process.env.MONGO_URI)
     .catch(err => console.log(err));
 
 const PORT = process.env.PORT || 4500;
-app.listen(PORT, () => console.log(`Server is running at port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`Server is running at port ${PORT}`));
+
+init(server);

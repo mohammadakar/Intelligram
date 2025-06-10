@@ -45,26 +45,37 @@ const userSchema=new mongoose.Schema({
         },
         createdAt:   { type: Date, default: Date.now }
       }],
-    bio:{
-        type:String,
-        default:"",
-    },
-    isAccountVerified:{
-        type:Boolean,
-        default:false,
-    },
-    isAdmin:{
-        type:Boolean,
-        default:false,
-    },
-    isAccountPrivate:{
-        type:Boolean,
-        default:false,
-    },
-    savedPosts:[{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:"Post"
-    }]
+      requests: [
+            {
+            user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+            username: String,
+            profilePhoto: {
+                url: String,
+                publicId: String,
+            },
+            createdAt: { type: Date, default: Date.now },
+            },
+        ],
+        bio:{
+            type:String,
+            default:"",
+        },
+        isAccountVerified:{
+            type:Boolean,
+            default:false,
+        },
+        isAdmin:{
+            type:Boolean,
+            default:false,
+        },
+        isAccountPrivate:{
+            type:Boolean,
+            default:false,
+        },
+        savedPosts:[{
+            type:mongoose.Schema.Types.ObjectId,
+            ref:"Post"
+        }]
 },{timestamps:true});
 
 //generate Auth token

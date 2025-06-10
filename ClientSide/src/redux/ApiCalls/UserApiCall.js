@@ -2,6 +2,7 @@ import { toast } from "react-toastify";
 import request from "../../utils/request";
 import { userActions } from "../Slices/UserSlice";
 import { authActions } from "../Slices/AuthSlice";
+import { fetchNotifications } from "./NotificationApiCall";
 
 
 export function updateBio(bio) {
@@ -69,35 +70,39 @@ export function toggleFollow(userId) {
       );
       toast.success(res.data.message);
 
-      // 1) re-fetch the searched user to update follower count
+      // 1) re-fetch the searched user to update their followers/following
       await dispatch(SearchedUser(userId));
 
-      // 2) Get the searched user's full data from your user slice
-      const { searchedUser } = getState().user;
+      // 2) update currentUser.following or if request pending, remain the same
       const { user: current } = getState().auth;
-
-      // 3) Build the new `following` array
       let newFollowing;
-      if (res.data.message === "Followed user") {
-        // add a full follower object
+
+      // If message was “Requested to follow (private)”, we do NOT yet add to following.
+      if (res.data.message.startsWith("Followed user")) {
+        // newly added to following
+        const { searchedUser } = getState().user;
         newFollowing = [
           ...current.following,
           {
             user: searchedUser._id,
             username: searchedUser.username,
-            profilePhoto: searchedUser.profilePhoto
-          }
+            profilePhoto: searchedUser.profilePhoto,
+          },
         ];
-      } else {
-        // filter out by ID
+      } else if (res.data.message === "Unfollowed user") {
         newFollowing = current.following.filter(
-          f => f.user.toString() !== userId
+          (f) => f.user.toString() !== userId
         );
+      } else if (res.data.message.startsWith("Cancelled follow request")) {
+        // do nothing to current.following
+        newFollowing = current.following;
+      } else {
+        // res.data.message === "Requested to follow (private)"
+        // do nothing to following yet
+        newFollowing = current.following;
       }
 
-      // 4) Update Redux & localStorage
       dispatch(authActions.setFollowing(newFollowing));
-
       const stored = JSON.parse(localStorage.getItem("userinfo"));
       localStorage.setItem(
         "userinfo",
@@ -105,6 +110,42 @@ export function toggleFollow(userId) {
       );
     } catch (err) {
       toast.error(err.response?.data?.error || "Failed to follow/unfollow user");
+    }
+  };
+}
+
+export function respondFollowRequest(requesterId, action) {
+  return async (dispatch, getState) => {
+    try {
+      // 1) grab the existing token from Redux
+      const token = getState().auth.user.token;
+
+      // 2) call the backend to accept/reject
+      const res = await request.put(
+        `/api/users/respond-follow/${requesterId}`,
+        { action },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(res.data.message);
+
+      // 3) immediately re‐fetch notifications so the pending "follow_request" disappears
+      await dispatch(fetchNotifications());
+
+      // 4) re‐fetch the current user's details (so followers/following update in UI)
+      const meRes = await request.get(
+        `/api/users/getUserbyId/${getState().auth.user._id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // 5) Merge the returned user object into Redux, preserving the original token
+      const updatedUser = {
+        ...meRes.data,
+        token: getState().auth.user.token, // re‐attach the token we still had
+      };
+      dispatch(authActions.login(updatedUser));
+
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to respond to request");
     }
   };
 }

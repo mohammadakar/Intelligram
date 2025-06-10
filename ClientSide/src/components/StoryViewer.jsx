@@ -1,39 +1,42 @@
 // src/components/StoryViewer.jsx
-import { useState, useEffect } from 'react'
-import { FaTimes, FaHeart, FaEye } from 'react-icons/fa'
-import { useDispatch, useSelector } from 'react-redux'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
+import { useState, useEffect } from 'react';
+import { FaTimes, FaHeart, FaEye } from 'react-icons/fa';
+import { useDispatch, useSelector } from 'react-redux';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import {
   toggleStoryLike,
   viewStory,
   fetchStoryViews
-} from '../redux/ApiCalls/storyApiCall'
-dayjs.extend(relativeTime)
+} from '../redux/ApiCalls/storyApiCall';
+import { getOrCreateChat, sendMessage } from '../redux/ApiCalls/chatApiCall';
+dayjs.extend(relativeTime);
 
-export default function StoryViewer({ stories = [], user, onClose }) {
-  const [idx, setIdx] = useState(0)
-  const [viewList, setViewList] = useState(null)
-  const total = stories.length
-  const dispatch = useDispatch()
-  const currentUser = useSelector(s => s.auth.user)
-  const isOwner = user._id === currentUser._id
+const StoryViewer = ({ stories = [], user, onClose }) => {
+  const [idx, setIdx] = useState(0);
+  const [viewList, setViewList] = useState(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const total = stories.length;
+  const dispatch = useDispatch();
+  const currentUser = useSelector(s => s.auth.user);
+  const isOwner = user._id === currentUser._id;
 
-  // record view & auto-advance after 5s
+  // record view & auto-advance after 5s (unless paused)
   useEffect(() => {
-    if (total === 0) return
-    const sid = stories[idx]._id
-    dispatch(viewStory(sid))
+    if (total === 0 || isPaused) return;
+    const sid = stories[idx]._id;
+    dispatch(viewStory(sid));
     const timer = setTimeout(() => {
-      if (idx < total - 1) setIdx(i => i + 1)
-      else onClose()
-    }, 5000)
-    return () => clearTimeout(timer)
-  }, [idx, total, stories, dispatch, onClose])
+      if (idx < total - 1) setIdx(i => i + 1);
+      else onClose();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [idx, total, stories, dispatch, onClose, isPaused]);
 
-  if (!user || total === 0) return null
+  if (!user || total === 0) return null;
 
-  const { profilePhoto, username } = user
+  const { profilePhoto, username } = user;
   const {
     _id,
     url,
@@ -42,13 +45,48 @@ export default function StoryViewer({ stories = [], user, onClose }) {
     tags = [],
     createdAt,
     likes = []
-  } = stories[idx]
-  const hasLiked = likes.some(id => id === currentUser._id)
+  } = stories[idx];
+  const hasLiked = likes.includes(currentUser._id);
 
   const openViews = async () => {
-    const viewers = await dispatch(fetchStoryViews(_id))
-    setViewList(viewers)
-  }
+    setIsPaused(true);
+    const viewersRaw = await dispatch(fetchStoryViews(_id));
+    // dedupe and flag liked
+    const unique = {};
+    viewersRaw.forEach(v => {
+      if (!unique[v._id]) {
+        unique[v._id] = {
+          _id: v._id,
+          username: v.username,
+          profilePhoto: v.profilePhoto,
+          viewedAt: v.viewedAt,
+          liked: likes.includes(v._id)
+        };
+      }
+    });
+    setViewList(Object.values(unique));
+  };
+
+  const closeViews = () => {
+    setViewList(null);
+    setIsPaused(false);
+  };
+
+  const handleReply = async () => {
+    if (!replyText.trim()) return;
+    // 1) get or create the chat
+    const res = await dispatch(getOrCreateChat(user._id));
+    const chat = res.data;            // our thunk returns axios res
+    if (chat?._id) {
+      // 2) send a message with the story URL as media
+      await dispatch(sendMessage(chat._id, replyText, url));
+      setReplyText('');
+    }
+  };
+
+  const handleLike = () => {
+    dispatch(toggleStoryLike(_id));
+  };
 
   return (
     <div className="fixed inset-0 bg-gradient-to-r from-blue-600 to-purple-600 bg-opacity-90 flex items-center justify-center z-50 p-4">
@@ -81,7 +119,7 @@ export default function StoryViewer({ stories = [], user, onClose }) {
           </div>
         </div>
 
-        {/* top‐center box for caption/tags/location */}
+        {/* caption/tags/location box */}
         {(caption || tags.length > 0 || location) && (
           <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg p-2 space-y-1 max-w-xs w-11/12 text-center z-10">
             {caption && (
@@ -91,8 +129,7 @@ export default function StoryViewer({ stories = [], user, onClose }) {
               <div className="text-blue-600 text-xs">
                 {tags.map((u, i) => (
                   <span key={u._id}>
-                    {u.username}
-                    {i < tags.length - 1 ? ', ' : ''}
+                    {u.username}{i < tags.length - 1 ? ', ' : ''}
                   </span>
                 ))}
               </div>
@@ -106,13 +143,19 @@ export default function StoryViewer({ stories = [], user, onClose }) {
         {/* media */}
         <div className="flex-grow flex items-center justify-center">
           {/\.(mp4|mov|avi|webm)$/i.test(url) ? (
-            <video src={url} autoPlay loop muted className="max-h-full max-w-full" />
+            <video autoPlay loop controls className="max-h-full max-w-full">
+              <source src={url} type="video/mp4" />
+            </video>
           ) : (
-            <img src={url} alt="" className="max-h-full max-w-full object-contain" />
+            <img
+              src={url}
+              alt=""
+              className="max-h-full max-w-full object-contain"
+            />
           )}
         </div>
 
-        {/* bottom action bar */}
+        {/* bottom bar */}
         <div className="flex items-center p-2 bg-black bg-opacity-75">
           {isOwner ? (
             <button
@@ -126,11 +169,18 @@ export default function StoryViewer({ stories = [], user, onClose }) {
               <input
                 type="text"
                 placeholder="Send a reply…"
-                className="flex-grow rounded-full px-4 py-2 text-sm"
-                disabled
+                className="flex-grow rounded-full px-4 py-2 text-sm bg-white"
+                value={replyText}
+                onChange={e => setReplyText(e.target.value)}
               />
               <button
-                onClick={() => dispatch(toggleStoryLike(_id))}
+                onClick={handleReply}
+                className="ml-2 text-white"
+              >
+                Reply
+              </button>
+              <button
+                onClick={handleLike}
                 className={`ml-2 text-xl ${hasLiked ? 'text-red-500' : 'text-white'}`}
               >
                 <FaHeart />
@@ -139,26 +189,22 @@ export default function StoryViewer({ stories = [], user, onClose }) {
           )}
         </div>
 
-        {/* navigation arrows */}
+        {/* nav arrows */}
         {idx > 0 && (
           <button
-            onClick={() => setIdx(i => i - 1)}
+            onClick={() => { if (!isPaused) setIdx(i => i - 1); }}
             className="absolute inset-y-0 left-2 flex items-center text-white text-3xl"
-          >
-            ‹
-          </button>
+          >‹</button>
         )}
         {idx < total - 1 && (
           <button
-            onClick={() => setIdx(i => i + 1)}
+            onClick={() => { if (!isPaused) setIdx(i => i + 1); }}
             className="absolute inset-y-0 right-2 flex items-center text-white text-3xl"
-          >
-            ›
-          </button>
+          >›</button>
         )}
       </div>
 
-      {/* viewers list pop-up */}
+      {/* viewers pop-up */}
       {viewList && (
         <div className="fixed inset-0 bg-gradient-to-r from-blue-600 to-purple-600 bg-opacity-75 flex items-center justify-center z-60 p-4">
           <div className="bg-white rounded-lg p-4 max-w-xs w-full space-y-3">
@@ -172,6 +218,7 @@ export default function StoryViewer({ stories = [], user, onClose }) {
                     className="w-6 h-6 rounded-full object-cover"
                   />
                   <span className="flex-1">{v.username}</span>
+                  {v.liked && <FaHeart className="text-red-500 text-sm mr-1" />}
                   <span className="text-xs text-gray-500">
                     {dayjs(v.viewedAt).fromNow()}
                   </span>
@@ -179,7 +226,7 @@ export default function StoryViewer({ stories = [], user, onClose }) {
               ))}
             </ul>
             <button
-              onClick={() => setViewList(null)}
+              onClick={closeViews}
               className="mt-2 w-full text-center text-blue-600"
             >
               Close
@@ -188,5 +235,7 @@ export default function StoryViewer({ stories = [], user, onClose }) {
         </div>
       )}
     </div>
-  )
-}
+  );
+};
+
+export default StoryViewer;

@@ -6,7 +6,8 @@ import VerifyEmail from "./components/verifyEmail";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 import HomePage from "./components/Home";
-import { useSelector } from "react-redux";
+import { io } from "socket.io-client";
+import { useDispatch, useSelector } from "react-redux";
 import Nav from "./components/Nav";
 import CreatePost from "./components/CreatePost";
 import PostDetails from "./components/PostDetails";
@@ -20,10 +21,28 @@ import FollowersList from "./components/FollowersList";
 import FollowingList from "./components/FollowingList";
 import Settings from "./components/Settings";
 import Chat from "./components/Chat";
+import { useEffect } from "react";
+import { fetchNotifications } from "./redux/ApiCalls/NotificationApiCall";
+import { notificationActions } from "./redux/Slices/notificationSlice";
+import NotificationsPage from "./components/NotificationsPage";
 
 function App() {
-
+  const dispatch = useDispatch();
   const {user}=useSelector(state => state.auth)
+
+  useEffect(()=>{
+    if(!user) return;
+    // initial load
+    dispatch(fetchNotifications());
+    // connect socket
+    const socket = io("http://localhost:4500", { query:{ userId: user._id } });
+    socket.on("notification", notif => {
+      dispatch(notificationActions.pushNotification(notif));
+    });
+    return ()=> socket.disconnect();
+  }, [user, dispatch]);
+
+  
   
   return (
     <BrowserRouter>
@@ -48,6 +67,7 @@ function App() {
         <Route path="/following" element={user ? <FollowingList/> : <LoginPage/>} />
         <Route path="/settings" element={user ? <Settings/> : <LoginPage/>} />
         <Route path="/chat" element={user ? <Chat/> : <LoginPage/>} />
+        <Route path="/notifications" element={user ? <NotificationsPage/> : <LoginPage/>} />
       </Routes>
       </div>
       {user && <Nav/>}
