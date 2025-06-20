@@ -4,8 +4,9 @@ import { passwordReducer } from "./Slices/PasswordSlice";
 import { postReducer } from "./Slices/postSlice";
 import { userReducer } from "./Slices/UserSlice";
 import { storyReducer } from "./Slices/storySlice";
-import { chatReducer } from "./Slices/ChatSlice";
 import { notificationReducer } from "./Slices/notificationSlice";
+import { chatReducer } from "./Slices/chatSlice";
+import { adminReducer } from "./Slices/adminSlice";
 
 const store = configureStore({
     reducer:{
@@ -15,7 +16,8 @@ const store = configureStore({
         user:userReducer,
         story:storyReducer,
         chat:chatReducer,
-        notification:notificationReducer
+        notification:notificationReducer,
+        admin:adminReducer
     }
 });
 

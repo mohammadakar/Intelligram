@@ -3,6 +3,10 @@ const asyncHandler = require("express-async-handler");
 const { User } = require("../Models/User");
 const bcrypt = require("bcryptjs");
 const { createNotification, deleteNotificationByCriteria } = require("./NotificationController");
+const Chat = require("../Models/Chat");
+const Story = require("../Models/Story");
+const { Post } = require("../Models/Post");
+const Notification = require("../Models/Notification");
 
 module.exports.updateBio = asyncHandler(async (req, res) => {
   const { bio } = req.body;
@@ -337,6 +341,38 @@ module.exports.updatePassword = asyncHandler(async (req, res) => {
 
 
 module.exports.deleteAccount = asyncHandler(async (req, res) => {
-  await User.findByIdAndDelete(req.user._id);
-  res.json({ message: "Your account has been deleted" });
+  const userId = req.user._id;
+
+  // 1) Delete all posts by this user
+  await Post.deleteMany({ user: userId });
+
+  // 2) Delete all stories by this user
+  await Story.deleteMany({ user: userId });
+
+  // 3) Remove this user from all other users' followers/following
+  await User.updateMany(
+    { "followers.user": userId },
+    { $pull: { followers: { user: userId } } }
+  );
+  await User.updateMany(
+    { "following.user": userId },
+    { $pull: { following: { user: userId } } }
+  );
+
+  // 4) Delete all chats involving this user
+  await Chat.deleteMany({ participants: userId });
+
+  // 5) Delete all notifications where they are actor or recipient
+  await Notification.deleteMany({
+    $or: [
+      { user: userId },
+      { actor: userId },
+      { reference: userId }
+    ]
+  });
+
+  // 6) Finally delete the user record
+  await User.findByIdAndDelete(userId);
+
+  res.json({ message: "Your account and all related data have been deleted" });
 });

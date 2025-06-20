@@ -2,6 +2,8 @@ const { Post } = require("../Models/Post");
 const asyncHandler = require("express-async-handler");
 const { User } = require("../Models/User");
 const { createNotification } = require("./NotificationController");
+const Report = require("../Models/Report");
+const Notification = require("../Models/Notification");
 
 module.exports.createPost = asyncHandler(async (req, res) => {
   try {
@@ -165,13 +167,13 @@ module.exports.deleteComment = asyncHandler(async (req, res) => {
 });
 
 module.exports.deletePost = asyncHandler(async (req, res) => {
-  const post = await Post.findById(req.params.id);
+  const postId = req.params.id;
+  const post = await Post.findById(postId);
   if (!post) {
     res.status(404);
     throw new Error("Post not found");
   }
 
-  
   if (
     post.user.toString() !== req.user._id.toString() &&
     !req.user.isAdmin
@@ -181,7 +183,15 @@ module.exports.deletePost = asyncHandler(async (req, res) => {
   }
 
   await post.deleteOne();
-  res.status(200).json({ message: "Post deleted successfully", postId: req.params.id });
+
+  await Notification.deleteMany({ reference: postId, type: { $in: ["like", "comment"] }});
+
+  await Report.deleteMany({ referenceId: postId, type: "post" });
+
+  res.status(200).json({
+    message: "Post deleted successfully",
+    postId
+  });
 });
 
 module.exports.updatePost = asyncHandler(async (req, res) => {

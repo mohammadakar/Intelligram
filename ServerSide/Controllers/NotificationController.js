@@ -22,7 +22,7 @@ module.exports.listNotifications = asyncHandler(async (req, res) => {
   const list = await Notification.find({ user: req.user._id })
     .sort({ createdAt: -1 })
     .limit(50)
-    .populate("actor","username profilePhoto");
+    .populate("actor","username profilePhoto warnings");
   res.json(list);
 });
 

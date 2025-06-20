@@ -75,7 +75,11 @@ const userSchema=new mongoose.Schema({
         savedPosts:[{
             type:mongoose.Schema.Types.ObjectId,
             ref:"Post"
-        }]
+        }],
+        warnings:{
+            type:Number,
+            default:0
+        }
 },{timestamps:true});
 
 //generate Auth token

@@ -1,6 +1,6 @@
 // src/components/StoryViewer.jsx
 import { useState, useEffect } from 'react';
-import { FaTimes, FaHeart, FaEye } from 'react-icons/fa';
+import { FaTimes, FaHeart, FaEye, FaEllipsisH } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -10,19 +10,21 @@ import {
   fetchStoryViews
 } from '../redux/ApiCalls/storyApiCall';
 import { getOrCreateChat, sendMessage } from '../redux/ApiCalls/chatApiCall';
+import ReportModal from './ReportModal';
 dayjs.extend(relativeTime);
 
 const StoryViewer = ({ stories = [], user, onClose }) => {
-  const [idx, setIdx] = useState(0);
+  const [idx, setIdx]           = useState(0);
   const [viewList, setViewList] = useState(null);
   const [isPaused, setIsPaused] = useState(false);
-  const [replyText, setReplyText] = useState('');
+  const [replyText, setReplyText]= useState('');
+  const [reportOpen, setReportOpen] = useState(false);
   const total = stories.length;
   const dispatch = useDispatch();
   const currentUser = useSelector(s => s.auth.user);
   const isOwner = user._id === currentUser._id;
 
-  // record view & auto-advance after 5s (unless paused)
+  // auto‑advance & mark view
   useEffect(() => {
     if (total === 0 || isPaused) return;
     const sid = stories[idx]._id;
@@ -37,21 +39,12 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
   if (!user || total === 0) return null;
 
   const { profilePhoto, username } = user;
-  const {
-    _id,
-    url,
-    caption,
-    location,
-    tags = [],
-    createdAt,
-    likes = []
-  } = stories[idx];
+  const { _id, url, caption, location, tags = [], createdAt, likes = [] } = stories[idx];
   const hasLiked = likes.includes(currentUser._id);
 
   const openViews = async () => {
     setIsPaused(true);
     const viewersRaw = await dispatch(fetchStoryViews(_id));
-    // dedupe and flag liked
     const unique = {};
     viewersRaw.forEach(v => {
       if (!unique[v._id]) {
@@ -66,7 +59,6 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
     });
     setViewList(Object.values(unique));
   };
-
   const closeViews = () => {
     setViewList(null);
     setIsPaused(false);
@@ -74,23 +66,19 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
 
   const handleReply = async () => {
     if (!replyText.trim()) return;
-    // 1) get or create the chat
-    const res = await dispatch(getOrCreateChat(user._id));
-    const chat = res.data;            // our thunk returns axios res
+    const { payload: chat } = await dispatch(getOrCreateChat(user._id));
     if (chat?._id) {
-      // 2) send a message with the story URL as media
       await dispatch(sendMessage(chat._id, replyText, url));
       setReplyText('');
     }
   };
 
-  const handleLike = () => {
-    dispatch(toggleStoryLike(_id));
-  };
+  const handleLike = () => dispatch(toggleStoryLike(_id));
 
   return (
     <div className="fixed inset-0 bg-gradient-to-r from-blue-600 to-purple-600 bg-opacity-90 flex items-center justify-center z-50 p-4">
       <div className="relative bg-black rounded-lg overflow-hidden w-full max-w-sm h-full max-h-[90vh] flex flex-col">
+
         {/* progress & header */}
         <div className="absolute top-0 left-0 right-0 flex flex-col p-2 space-y-1">
           <div className="flex gap-1">
@@ -113,18 +101,30 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
                 <div className="text-xs opacity-80">{dayjs(createdAt).fromNow()}</div>
               </div>
             </div>
-            <button onClick={onClose} className="p-1 text-white">
-              <FaTimes size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* report button for non-owners */}
+              {!isOwner && (
+                <button
+                  onClick={() => {
+                    setIsPaused(true);
+                    setReportOpen(true);
+                  }}
+                  className="p-1 text-white hover:text-red-400"
+                >
+                  <FaEllipsisH size={16} />
+                </button>
+              )}
+              <button onClick={onClose} className="p-1 text-white">
+                <FaTimes size={16} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* caption/tags/location box */}
+        {/* caption/tags/location */}
         {(caption || tags.length > 0 || location) && (
           <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg p-2 space-y-1 max-w-xs w-11/12 text-center z-10">
-            {caption && (
-              <div className="text-gray-800 text-sm break-words">{caption}</div>
-            )}
+            {caption && <div className="text-gray-800 text-sm break-words">{caption}</div>}
             {tags.length > 0 && (
               <div className="text-blue-600 text-xs">
                 {tags.map((u, i) => (
@@ -134,9 +134,7 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
                 ))}
               </div>
             )}
-            {location && (
-              <div className="text-gray-500 text-xs">📍 {location}</div>
-            )}
+            {location && <div className="text-gray-500 text-xs">📍 {location}</div>}
           </div>
         )}
 
@@ -147,11 +145,7 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
               <source src={url} type="video/mp4" />
             </video>
           ) : (
-            <img
-              src={url}
-              alt=""
-              className="max-h-full max-w-full object-contain"
-            />
+            <img src={url} alt="" className="max-h-full max-w-full object-contain" />
           )}
         </div>
 
@@ -173,16 +167,8 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
                 value={replyText}
                 onChange={e => setReplyText(e.target.value)}
               />
-              <button
-                onClick={handleReply}
-                className="ml-2 text-white"
-              >
-                Reply
-              </button>
-              <button
-                onClick={handleLike}
-                className={`ml-2 text-xl ${hasLiked ? 'text-red-500' : 'text-white'}`}
-              >
+              <button onClick={handleReply} className="ml-2 text-white">Reply</button>
+              <button onClick={handleLike} className={`ml-2 text-xl ${hasLiked ? 'text-red-500' : 'text-white'}`}>
                 <FaHeart />
               </button>
             </>
@@ -204,7 +190,7 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
         )}
       </div>
 
-      {/* viewers pop-up */}
+      {/* viewers list */}
       {viewList && (
         <div className="fixed inset-0 bg-gradient-to-r from-blue-600 to-purple-600 bg-opacity-75 flex items-center justify-center z-60 p-4">
           <div className="bg-white rounded-lg p-4 max-w-xs w-full space-y-3">
@@ -219,9 +205,7 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
                   />
                   <span className="flex-1">{v.username}</span>
                   {v.liked && <FaHeart className="text-red-500 text-sm mr-1" />}
-                  <span className="text-xs text-gray-500">
-                    {dayjs(v.viewedAt).fromNow()}
-                  </span>
+                  <span className="text-xs text-gray-500">{dayjs(v.viewedAt).fromNow()}</span>
                 </li>
               ))}
             </ul>
@@ -233,6 +217,15 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* report modal */}
+      {reportOpen && (
+        <ReportModal
+          referenceId={_id}
+          type="story"
+          onClose={() => { setReportOpen(false); setIsPaused(false); }}
+        />
       )}
     </div>
   );

@@ -14,7 +14,6 @@ export default function HomeStories() {
 
   useEffect(() => { dispatch(getStories()); }, [dispatch]);
 
-  // group by user
   const byUser = stories.reduce((map, s) => {
     (map[s?.user?._id] ||= []).push(s);
     return map;
@@ -24,7 +23,6 @@ export default function HomeStories() {
   return (
     <>
       <div className="flex overflow-x-auto p-4 bg-white border-b space-x-4">
-        {/* Your story “+” circle */}
         <div onClick={() => setUp(true)} className="cursor-pointer flex flex-col items-center">
           <div className="w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center">
             <FaPlus className="text-white text-xl" />
@@ -54,7 +52,6 @@ export default function HomeStories() {
         })}
       </div>
 
-      {/* Story viewer modal */}
       {viewId && (
         <StoryViewer
           stories={byUser[viewId]}

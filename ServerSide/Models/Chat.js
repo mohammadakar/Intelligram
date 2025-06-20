@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 const messageSchema = new mongoose.Schema({
   sender:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   content:     { type: String, required: function() { return !this.media?.length; } },
-  media:       { type: [String], default: [] }, 
+  media:       { type: [String], default: [] },    
   type:        { type: String, enum: ['text','image','video'], required: true },
   createdAt:   { type: Date, default: Date.now }
 });
