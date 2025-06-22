@@ -7,11 +7,15 @@ import {
   sendMessage,
   editMessage,
   deleteMessage,
-  deleteChat
+  deleteChat,
+  uploadFile
 } from "../redux/ApiCalls/chatApiCall";
-import { FiMoreVertical } from "react-icons/fi";
+import { FiMoreVertical, FiMic, FiPaperclip, FiX } from "react-icons/fi";
 import { useLocation } from "react-router-dom";
-import { FaImage, FaVideo } from "react-icons/fa";
+import { FaImage, FaVideo, FaVolumeUp, FaPlay } from "react-icons/fa";
+import AudioMessage from "./AudioMessage";
+
+
 
 const Chat = () => {
   const dispatch = useDispatch();
@@ -19,6 +23,11 @@ const Chat = () => {
   const { list, activeChat } = useSelector((s) => s.chat);
   const [otherId, setOtherId] = useState("");
   const [text, setText] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [audioURL, setAudioURL] = useState("");
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [msgMenuOpen, setMsgMenuOpen] = useState(null);
   const [chatMenuOpen, setChatMenuOpen] = useState(null);
@@ -26,6 +35,8 @@ const Chat = () => {
   const [editText, setEditText] = useState("");
 
   const msgContainerRef = useRef();
+  const audioChunksRef = useRef([]);
+  const fileInputRef = useRef();
 
   // Read ?user=<id> from URL and auto-open that chat
   const location = useLocation();
@@ -54,8 +65,109 @@ const Chat = () => {
 
   const handleSend = () => {
     if (!text.trim() || !activeChat) return;
-    dispatch(sendMessage(activeChat._id, text));
+    dispatch(sendMessage({
+      chatId: activeChat._id,
+      content: text,
+      type: 'text'
+    }));
     setText("");
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+      
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setAudioURL(audioUrl);
+        setAudioBlob(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      audioChunksRef.current = [];
+      recorder.start();
+      setMediaRecorder(recorder);
+      setRecording(true);
+    } catch (err) {
+      console.error("Error starting recording:", err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+      setRecording(false);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+      setRecording(false);
+      setAudioURL("");
+      setAudioBlob(null);
+    }
+  };
+
+  const sendVoiceMessage = async () => {
+    if (!audioBlob || !activeChat) return;
+    
+    try {
+      setIsUploading(true);
+      const file = new File([audioBlob], `voice-${Date.now()}.mp3`, {
+        type: 'audio/mp3'
+      });
+      
+      const url = await dispatch(uploadFile(file));
+      if (url) {
+        await dispatch(sendMessage({
+          chatId: activeChat._id,
+          media: [url],
+          type: 'audio'
+        }));
+        setAudioURL("");
+        setAudioBlob(null);
+      }
+    } catch (err) {
+      console.error("Error sending voice message:", err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length || !activeChat) return;
+    
+    try {
+      setIsUploading(true);
+      for (const file of files) {
+        const url = await dispatch(uploadFile(file));
+        if (url) {
+          const type = file.type.startsWith('image/') ? 'image' : 
+                       file.type.startsWith('video/') ? 'video' : 'file';
+          
+          await dispatch(sendMessage({
+            chatId: activeChat._id,
+            media: [url],
+            type
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Error sending file:", err);
+    } finally {
+      setIsUploading(false);
+      e.target.value = ""; // Reset file input
+    }
   };
 
   const startEdit = (m) => {
@@ -63,11 +175,13 @@ const Chat = () => {
     setEditText(m.content);
     setMsgMenuOpen(null);
   };
+  
   const saveEdit = () => {
     dispatch(editMessage(activeChat._id, editMsgId, editText));
     setEditMsgId(null);
     setEditText("");
   };
+  
   const cancelEdit = () => {
     setEditMsgId(null);
     setEditText("");
@@ -85,9 +199,34 @@ const Chat = () => {
             <source src={url} type="video/mp4" />
           </video>
         );
+      } else if (type === 'audio') {
+        return (
+          <div key={index} className="mt-2">
+            <AudioMessage url={url} />
+          </div>
+        );
       }
-      return null;
+      return (
+        <a 
+          key={index} 
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-500 underline mt-2 block"
+        >
+          Download file
+        </a>
+      );
     });
+  };
+
+  const getMediaIcon = (type) => {
+    switch (type) {
+      case 'image': return <FaImage className="inline mr-1" />;
+      case 'video': return <FaVideo className="inline mr-1" />;
+      case 'audio': return <FaVolumeUp className="inline mr-1" />;
+      default: return "📄";
+    }
   };
 
   return (
@@ -132,7 +271,7 @@ const Chat = () => {
                   <div className="text-sm text-gray-500 truncate">
                     {last.sender._id === user._id ? "You: " : ""}
                     {last.content || (last.media?.length > 0 ? (
-                      last.type === 'image' ? <><FaImage className="inline mr-1" />Image</> : <><FaVideo className="inline mr-1" />Video</>
+                      <>{getMediaIcon(last.type)}{last.type}</>
                     ) : "Media")}
                   </div>
                 )}
@@ -288,16 +427,101 @@ const Chat = () => {
                 );
               })}
             </div>
-            <div className="p-4 border-t bg-white flex">
+
+            {/* Voice recording preview */}
+            {audioURL && (
+              <div className="p-4 border-t bg-white flex items-center justify-between">
+                <div className="flex-1 flex items-center">
+                  <button
+                    onClick={sendVoiceMessage}
+                    className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white mr-3"
+                  >
+                    <FaPlay size={12} />
+                  </button>
+                  
+                  <div className="flex items-end h-6 flex-1">
+                    {/* Waveform visualization */}
+                    {[...Array(20)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="w-1 bg-blue-400 mx-px"
+                        style={{ 
+                          height: `${Math.floor(Math.random() * 12) + 4}px`,
+                          opacity: `${0.2 + (i / 20)}`
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="flex space-x-2 ml-4">
+                  <button
+                    onClick={sendVoiceMessage}
+                    className="bg-blue-600 text-white px-3 py-1 rounded flex items-center"
+                    disabled={isUploading}
+                  >
+                    {isUploading ? "Sending..." : "Send"}
+                  </button>
+                  <button
+                    onClick={cancelRecording}
+                    className="bg-gray-500 text-white px-3 py-1 rounded flex items-center"
+                  >
+                    <FiX size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Message input */}
+            <div className="p-4 border-t bg-white flex items-center">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 text-gray-600 hover:text-gray-800 mr-2 flex items-center"
+                disabled={isUploading}
+                title="Attach file"
+              >
+                <FiPaperclip size={20} />
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={handleFileChange}
+                  multiple
+                  accept="image/*,video/*,audio/*"
+                />
+              </button>
+              
+              {recording ? (
+                <button
+                  onClick={stopRecording}
+                  className="p-2 text-red-600 hover:text-red-800 mr-2 flex items-center"
+                  title="Stop recording"
+                >
+                  <FiMic size={20} />
+                </button>
+              ) : (
+                <button
+                  onClick={startRecording}
+                  className="p-2 text-gray-600 hover:text-gray-800 mr-2 flex items-center"
+                  title="Record voice message"
+                  disabled={isUploading}
+                >
+                  <FiMic size={20} />
+                </button>
+              )}
+              
               <input
                 className="flex-1 border rounded-full px-4 py-2"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Type a message…"
+                disabled={isUploading}
               />
+              
               <button
                 onClick={handleSend}
-                className="ml-3 bg-blue-600 text-white px-4 py-2 rounded-full"
+                className="ml-3 bg-blue-600 text-white px-4 py-2 rounded-full flex items-center"
+                disabled={isUploading || !text.trim()}
               >
                 Send
               </button>

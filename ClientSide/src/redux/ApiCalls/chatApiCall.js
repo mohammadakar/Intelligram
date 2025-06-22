@@ -1,6 +1,10 @@
 import request from '../../utils/request';
 import { toast } from 'react-toastify';
 import { chatActions } from '../Slices/chatSlice';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { app } from '../../firebase'; // Ensure this imports your Firebase app correctly
+
+const storage = getStorage(app);
 
 // 1) List my chats
 export function listMyChats() {
@@ -37,7 +41,28 @@ export function getOrCreateChat(otherId) {
   };
 }
 
-// 3) Send a message (text and/or media)
+// 3) Upload file to Firebase storage
+export function uploadFile(file) {
+  return async () => {
+    try {
+      const path = `chat_media/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, path);
+      
+      // Upload file
+      await uploadBytes(storageRef, file);
+      
+      // Get download URL
+      const url = await getDownloadURL(storageRef);
+      return url;
+    } catch (err) {
+      console.error("Error uploading file:", err);
+      toast.error('Failed to upload file');
+      throw err;
+    }
+  };
+}
+
+// 4) Send a message (text, media, or audio)
 export function sendMessage({ chatId, content = '', media = [], type }) {
   return async (dispatch, getState) => {
     try {
@@ -46,7 +71,7 @@ export function sendMessage({ chatId, content = '', media = [], type }) {
       const body = { 
         content: content.trim(), 
         media, 
-        type: type || (media.length ? 'image' : 'text') 
+        type: type || (media.length ? 'file' : 'text') 
       };
       
       const res = await request.post(
@@ -63,7 +88,8 @@ export function sendMessage({ chatId, content = '', media = [], type }) {
     }
   };
 }
-// 4) Edit a message
+
+// 5) Edit a message
 export function editMessage(chatId, messageId, content) {
   return async (dispatch, getState) => {
     try {
@@ -82,7 +108,7 @@ export function editMessage(chatId, messageId, content) {
   };
 }
 
-// 5) Delete a message
+// 6) Delete a message
 export function deleteMessage(chatId, messageId) {
   return async (dispatch, getState) => {
     try {
@@ -99,7 +125,7 @@ export function deleteMessage(chatId, messageId) {
   };
 }
 
-// 6) Delete an entire chat
+// 7) Delete an entire chat
 export function deleteChat(chatId) {
   return async (dispatch, getState) => {
     try {

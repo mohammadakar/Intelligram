@@ -31,14 +31,13 @@ module.exports.getOrCreateChat = asyncHandler(async (req, res) => {
   res.json(chat);
 });
 
-// Send a message (text, image, or video) - FIXED
 module.exports.sendMessage = asyncHandler(async (req, res) => {
   const { chatId }        = req.params;
   const { content = '', media = [], type } = req.body;
 
-  if (!content.trim() && media.length === 0) {
+  if (!content.trim() && media.length === 0 && type !== 'audio') {
     res.status(400);
-    throw new Error('Either content or media is required');
+    throw new Error('Message content or media is required');
   }
 
   const chat = await Chat.findById(chatId);
@@ -47,12 +46,18 @@ module.exports.sendMessage = asyncHandler(async (req, res) => {
     throw new Error('Chat not found');
   }
 
-  // Determine type based on media if not provided
+  // Determine type if not provided
   let actualType = type;
   if (!actualType && media.length > 0) {
     // Check if any media item is a video
     const isVideo = media.some(url => /\.(mp4|mov|avi|webm)$/i.test(url));
-    actualType = isVideo ? 'video' : 'image';
+    const isImage = media.some(url => /\.(jpg|jpeg|png|gif)$/i.test(url));
+    const isAudio = media.some(url => /\.(mp3|wav|ogg)$/i.test(url));
+    
+    if (isVideo) actualType = 'video';
+    else if (isImage) actualType = 'image';
+    else if (isAudio) actualType = 'audio';
+    else actualType = 'file';
   } else if (!actualType) {
     actualType = 'text';
   }
