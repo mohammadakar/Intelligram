@@ -127,5 +127,7 @@ module.exports.listStories = asyncHandler(async (req, res) => {
 module.exports.deleteStory = asyncHandler(async (req, res) => {
   const story = await Story.findByIdAndDelete(req.params.id);
   if (!story) return res.status(404).json({ message: 'Story not found' });
+
+  await Report.deleteMany({ referenceId:req.params.id, type: "story" });
   res.json({ message: 'Story deleted' });
 });

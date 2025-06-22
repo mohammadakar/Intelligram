@@ -1,3 +1,4 @@
+// src/components/Chat.jsx
 import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -10,6 +11,7 @@ import {
 } from "../redux/ApiCalls/chatApiCall";
 import { FiMoreVertical } from "react-icons/fi";
 import { useLocation } from "react-router-dom";
+import { FaImage, FaVideo } from "react-icons/fa";
 
 const Chat = () => {
   const dispatch = useDispatch();
@@ -45,7 +47,7 @@ const Chat = () => {
   }, [otherId, dispatch]);
 
   useEffect(() => {
-    if (msgContainerRef.current) {
+    if (msgContainerRef.current && activeChat?.messages) {
       msgContainerRef.current.scrollTop = msgContainerRef.current.scrollHeight;
     }
   }, [activeChat]);
@@ -69,6 +71,23 @@ const Chat = () => {
   const cancelEdit = () => {
     setEditMsgId(null);
     setEditText("");
+  };
+
+  const renderMedia = (media, type) => {
+    if (!media || media.length === 0) return null;
+    
+    return media.map((url, index) => {
+      if (type === 'image') {
+        return <img key={index} src={url} alt="Media" className="max-w-xs max-h-40 rounded-md mt-2" />;
+      } else if (type === 'video') {
+        return (
+          <video key={index} controls className="max-w-xs max-h-40 rounded-md mt-2">
+            <source src={url} type="video/mp4" />
+          </video>
+        );
+      }
+      return null;
+    });
   };
 
   return (
@@ -112,7 +131,9 @@ const Chat = () => {
                 {last && (
                   <div className="text-sm text-gray-500 truncate">
                     {last.sender._id === user._id ? "You: " : ""}
-                    {last.content}
+                    {last.content || (last.media?.length > 0 ? (
+                      last.type === 'image' ? <><FaImage className="inline mr-1" />Image</> : <><FaVideo className="inline mr-1" />Video</>
+                    ) : "Media")}
                   </div>
                 )}
               </div>
@@ -216,7 +237,10 @@ const Chat = () => {
                             </button>
                           </div>
                         ) : (
-                          m.content
+                          <>
+                            {m.content && <div>{m.content}</div>}
+                            {renderMedia(m.media, m.type)}
+                          </>
                         )}
                       </div>
                       {mine && (

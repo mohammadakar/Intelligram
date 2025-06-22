@@ -40,13 +40,10 @@ export function loginUser(user) {
 export function FaceLogin({ embedding }) {
     return async (dispatch) => {
       try {
-        // embedding is already the array you passed in:
         const res = await request.post("/api/auth/faceLogin", { embedding });
         if (res.data.multiple) {
-          // ambiguous matches: return that list
           return { multiple: true, accounts: res.data.accounts };
         } else {
-          // single match → log in
           dispatch(authActions.login(res.data));
           toast.success("Logged in successfully");
           return { multiple: false };
@@ -56,7 +53,7 @@ export function FaceLogin({ embedding }) {
         throw error;
       }
     }
-  }
+}
 
 export function verifyEmail(userId, token) {
     return async (dispatch) => {

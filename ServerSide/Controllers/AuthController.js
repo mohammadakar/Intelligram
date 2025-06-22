@@ -1,29 +1,21 @@
-// controllers/authController.js
-
 const asyncHandler = require("express-async-handler");
-const bcrypt       = require("bcryptjs");
-const jwt          = require("jsonwebtoken");
-const crypto       = require("crypto");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const { User, validateRegisterUser, validateLoginUser } = require("../Models/User");
 const { VerificationToken } = require("../Models/VerificationToken");
-const SendEmail    = require("../utils/SendEmail");
+const SendEmail = require("../utils/SendEmail");
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-// Euclidean distance between two equal-length vectors
-function euclideanDistance(a, b) {
-  if (a.length !== b.length) return Infinity;
-  return Math.sqrt(a.reduce((sum, v, i) => sum + (v - b[i]) ** 2, 0));
+// Calculate cosine similarity between two vectors
+function cosineSimilarity(a, b) {
+  if (a.length === 0 || b.length === 0 || a.length !== b.length) return 0;
+  const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
+  const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+  const normB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+  return dotProduct / (normA * normB);
 }
 
-// Normalize a vector to unit length
-function normalize(vec) {
-  const norm = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
-  if (!norm) return vec;
-  return vec.map(v => v / norm);
-}
-
-// Build the unified user response (with token, profile, follow, savedPosts, etc.)
+// Build the unified user response
 function generateUserResponse(user) {
   const token = jwt.sign(
     { id: user._id, isAdmin: user.isAdmin, username: user.username },
@@ -31,15 +23,15 @@ function generateUserResponse(user) {
     { expiresIn: "3h" }
   );
   return {
-    _id:          user._id,
-    isAdmin:      user.isAdmin,
+    _id: user._id,
+    isAdmin: user.isAdmin,
     profilePhoto: user.profilePhoto,
     token,
-    username:     user.username,
-    following:    user.following,
-    followers:    user.followers,
-    bio:          user.bio,
-    savedPosts:   user.savedPosts,
+    username: user.username,
+    following: user.following,
+    followers: user.followers,
+    bio: user.bio,
+    savedPosts: user.savedPosts,
     isAccountPrivate: user.isAccountPrivate,
   };
 }
@@ -54,12 +46,12 @@ module.exports.RegisterUser = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "User already exists!" });
   }
 
-  const salt  = await bcrypt.genSalt(10);
-  const hash  = await bcrypt.hash(req.body.password, salt);
-  const user  = new User({
-    username:       req.body.username,
-    email:          req.body.email,
-    password:       hash,
+  const salt = await bcrypt.genSalt(10);
+  const hash = await bcrypt.hash(req.body.password, salt);
+  const user = new User({
+    username: req.body.username,
+    email: req.body.email,
+    password: hash,
     faceEmbeddings: req.body.faceEmbeddings || []
   });
   await user.save();
@@ -67,7 +59,7 @@ module.exports.RegisterUser = asyncHandler(async (req, res) => {
   // create & email verification token
   const vtoken = new VerificationToken({
     userId: user._id,
-    token:  crypto.randomBytes(32).toString("hex")
+    token: crypto.randomBytes(32).toString("hex")
   });
   await vtoken.save();
 
@@ -108,50 +100,55 @@ module.exports.loginUser = asyncHandler(async (req, res) => {
 
 module.exports.FaceIdLogin = asyncHandler(async (req, res) => {
   const { embedding } = req.body;
-  if (!Array.isArray(embedding)) {
+  if (!Array.isArray(embedding) || embedding.length === 0) {
     return res.status(400).json({ message: "Invalid face embedding" });
   }
 
-  const received = normalize(embedding);
-
-  // only consider verified accounts
-  const users = await User.find({ isAccountVerified: true });
-  const scored = users.map(u => {
-    // stored faceEmbeddings might be a mixed type; ensure it's an array
-    let stored = Array.isArray(u.faceEmbeddings) ? u.faceEmbeddings : [];
-    const dist   = euclideanDistance(normalize(stored), received);
-    return { user: u, dist };
+  // Get all verified users with face embeddings
+  const users = await User.find({ 
+    isAccountVerified: true,
+    faceEmbeddings: { $exists: true, $ne: [] } 
   });
 
-  // sort by distance
-  scored.sort((a, b) => a.dist - b.dist);
+  const THRESHOLD = 0.6; // Minimum similarity score
+  const matches = [];
 
-  const THRESHOLD = 0.25; // max acceptable distance
-  const MARGIN    = 0.05; // required gap to runner-up
+  for (const user of users) {
+    const storedEmbedding = user.faceEmbeddings;
+    if (storedEmbedding && storedEmbedding.length > 0) {
+      const similarity = cosineSimilarity(embedding, storedEmbedding);
+      if (similarity > THRESHOLD) {
+        matches.push({
+          similarity,
+          user: {
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+            profilePhoto: user.profilePhoto
+          }
+        });
+      }
+    }
+  }
 
-  const best     = scored[0];
-  const runnerUp = scored[1];
+  // Sort by highest similarity first
+  matches.sort((a, b) => b.similarity - a.similarity);
 
-  // if nobody is close enough
-  if (!best || best.dist > THRESHOLD) {
+  if (matches.length === 0) {
     return res.status(401).json({ message: "Face not recognized" });
   }
 
-  // if unambiguous (only one below threshold or big gap to runner-up)
-  if (!runnerUp || (runnerUp.dist - best.dist) > MARGIN) {
-    return res.status(200).json(generateUserResponse(best.user));
+  if (matches.length === 1) {
+    return res.status(200).json(generateUserResponse(
+      await User.findById(matches[0].user._id)
+    ));
   }
 
-  // otherwise ambiguous → return list of all matching accounts
-  const matches = scored
-    .filter(s => s.dist <= THRESHOLD)
-    .map(s => ({
-      _id:          s.user._id,
-      username:     s.user.username,
-      profilePhoto: s.user.profilePhoto
-    }));
-
-  res.status(200).json({ multiple: true, accounts: matches });
+  // Return multiple matches
+  res.status(200).json({
+    multiple: true,
+    accounts: matches.map(match => match.user)
+  });
 });
 
 // ─── Email Verification ───────────────────────────────────────────────────────
@@ -162,7 +159,7 @@ module.exports.verifyUserAccountCtrl = asyncHandler(async (req, res) => {
 
   const vtoken = await VerificationToken.findOne({
     userId: user._id,
-    token:  req.params.token
+    token: req.params.token
   });
   if (!vtoken) return res.status(400).json({ message: "Invalid link" });
 
@@ -184,6 +181,5 @@ module.exports.selectAccount = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Invalid or unverified account" });
   }
 
-  // now send exactly the same shape as traditional login
   res.status(200).json(generateUserResponse(user));
 });

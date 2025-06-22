@@ -1,6 +1,6 @@
 // src/components/FollowingList.jsx
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toggleFollow } from '../redux/ApiCalls/UserApiCall';
 
 const FollowingList=()=> {
@@ -23,11 +23,13 @@ const FollowingList=()=> {
           {user.following.map(f => (
             <li key={f.user} className="flex items-center justify-between bg-gray-100 p-3 rounded-lg">
               <div className="flex items-center gap-3">
-                <img
+                <Link to={`/profile/${f.user}`} className="flex items-center gap-3">
+                  <img
                   src={f.profilePhoto.url}
                   alt={f.username}
                   className="w-10 h-10 rounded-full object-cover"
-                />
+                  />
+                </Link>
                 <span className="font-medium">{f.username}</span>
               </div>
               <button

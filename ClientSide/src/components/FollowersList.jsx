@@ -1,6 +1,5 @@
-// src/components/FollowersList.jsx
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { removeFollower } from '../redux/ApiCalls/UserApiCall';
 
 const FollowersList=()=> {
@@ -23,11 +22,13 @@ const FollowersList=()=> {
           {user.followers.map(f => (
             <li key={f.user} className="flex items-center justify-between bg-gray-100 p-3 rounded-lg">
               <div className="flex items-center gap-3">
-                <img
-                  src={f.profilePhoto.url}
-                  alt={f.username}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
+                <Link to={`/profile/${f.user}`} >
+                  <img
+                    src={f.profilePhoto.url}
+                    alt={f.username}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                </Link>
                 <span className="font-medium">{f.username}</span>
               </div>
               <button

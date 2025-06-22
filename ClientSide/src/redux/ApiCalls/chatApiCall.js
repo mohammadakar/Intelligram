@@ -1,4 +1,3 @@
-// src/redux/ApiCalls/chatApiCall.js
 import request from '../../utils/request';
 import { toast } from 'react-toastify';
 import { chatActions } from '../Slices/chatSlice';
@@ -38,25 +37,32 @@ export function getOrCreateChat(otherId) {
   };
 }
 
-// 3) Send a message (text and/or mediaUrl)
-export function sendMessage(chatId, content = '', media = []) {
+// 3) Send a message (text and/or media)
+export function sendMessage({ chatId, content = '', media = [], type }) {
   return async (dispatch, getState) => {
-    const token = getState().auth.user.token;
-    const type  = media.length
-      ? (/\.(mp4|mov|avi|webm)$/i.test(media[0]) ? 'video' : 'image')
-      : 'text';
-
-    const body = { content: content.trim(), media, type };
-    const res = await request.post(
-      `/api/chats/${chatId}/message`,
-      body,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    dispatch(chatActions.appendMessage({ chatId, message: res.data }));
-    return res;
+    try {
+      const token = getState().auth.user.token;
+      
+      const body = { 
+        content: content.trim(), 
+        media, 
+        type: type || (media.length ? 'image' : 'text') 
+      };
+      
+      const res = await request.post(
+        `/api/chats/${chatId}/message`,
+        body,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      dispatch(chatActions.appendMessage({ chatId, message: res.data }));
+      return res;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send message');
+      throw err;
+    }
   };
 }
-
 // 4) Edit a message
 export function editMessage(chatId, messageId, content) {
   return async (dispatch, getState) => {

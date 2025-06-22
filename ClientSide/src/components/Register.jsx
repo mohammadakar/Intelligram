@@ -1,72 +1,76 @@
-import { useEffect, useState } from "react";
+// src/components/RegisterPage.jsx
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as faceapi from "face-api.js";
 import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
 import { register } from "../redux/ApiCalls/AuthApiCall";
 import { loadModels } from "../utils/faceDetection";
+import Modal from "./Modal";
 
 const RegisterPage = () => {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername]           = useState("");
+  const [email, setEmail]                 = useState("");
+  const [password, setPassword]           = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [faceEmbeddings, setFaceEmbedding] = useState(null);
+  const [faceEmbeddings, setFaceEmbeddings]   = useState(null);
+  const [showFaceModal, setShowFaceModal]     = useState(false);
+  const videoRef = useRef();
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadModels();
+    loadModels().then(() => {
+      console.log("Models loaded for Face Registration");
+    });
   }, []);
 
-  // Stop any running camera stream
-  const stopVideoStream = () => {
-    const video = document.getElementById("video");
-    if (video && video.srcObject) {
-      const tracks = video.srcObject.getTracks() || [];
-      tracks.forEach((t) => t.stop());
-      video.srcObject = null;
+  const stopVideo = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+      videoRef.current.srcObject = null;
     }
   };
 
-  // Capture face descriptor and convert to plain number[]
+  const captureFace = async () => {
+    const detection = await faceapi
+      .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+    return detection ? Array.from(detection.descriptor) : null;
+  };
+
   const handleFaceRegistration = async () => {
+    setShowFaceModal(true);
     try {
-      const video = document.getElementById("video");
       const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
-      video.srcObject = stream;
+      videoRef.current.srcObject = stream;
       await new Promise((resolve) => {
-        video.onloadedmetadata = () => {
-          video.play();
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play();
           resolve();
         };
       });
-      // brief delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const detection = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
-      if (detection) {
-        // convert Float32Array to number[]
-        setFaceEmbedding(Array.from(detection.descriptor));
+      await new Promise((r) => setTimeout(r, 1000));
+      const embedding = await captureFace();
+      stopVideo();
+      setShowFaceModal(false);
+      if (embedding) {
+        setFaceEmbeddings(embedding);
         toast.success("Face registered successfully!");
       } else {
         toast.error("No face detected, please try again.");
       }
-    } catch (error) {
-      console.error("Face detection error:", error);
-      toast.error("Face detection error. Please try again.");
-    } finally {
-      stopVideoStream();
+    } catch (err) {
+      console.error(err);
+      stopVideo();
+      setShowFaceModal(false);
+      toast.error("Face registration failed. Try again.");
     }
   };
 
-  // Handle form submission
-  const formSubmitHandler = (e) => {
+  const onSubmit = (e) => {
     e.preventDefault();
     if (!username || !email || !password || !confirmPassword) {
       return toast.error("All fields are required.");
@@ -74,102 +78,136 @@ const RegisterPage = () => {
     if (password !== confirmPassword) {
       return toast.error("Passwords do not match!");
     }
-
     const payload = { username, email, password };
-    if (faceEmbeddings) {
-      payload.faceEmbeddings = faceEmbeddings;
-    }
-
+    if (faceEmbeddings) payload.faceEmbeddings = faceEmbeddings;
     dispatch(register(payload));
     navigate("/");
   };
 
   return (
-    <div className="flex justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-md bg-white shadow-md rounded-lg p-8">
-        <h2 className="text-center text-3xl font-extrabold text-gray-900 mb-6">
-          Create your account
-        </h2>
-        <form className="space-y-6" onSubmit={formSubmitHandler}>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter your username"
-            />
-          </div>
+    <div className="flex flex-col min-h-screen justify-center ">
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-full max-w-md bg-white shadow rounded-lg px-8 py-10">
+          <h2 className="text-center text-3xl font-extrabold text-gray-900 mb-6">
+            Create your account
+          </h2>
+          <form className="space-y-6" onSubmit={onSubmit}>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Username
+              </label>
+              <div className="mt-1">
+                <input
+                  type="text"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md 
+                             placeholder-gray-400 focus:outline-none focus:ring-blue-500 
+                             focus:border-blue-500 sm:text-sm"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Email
+              </label>
+              <div className="mt-1">
+                <input
+                  type="email"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md 
+                             placeholder-gray-400 focus:outline-none focus:ring-blue-500 
+                             focus:border-blue-500 sm:text-sm"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <div className="mt-1">
+                <input
+                  type="password"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md 
+                             placeholder-gray-400 focus:outline-none focus:ring-blue-500 
+                             focus:border-blue-500 sm:text-sm"
+                  placeholder="Create password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
+              <div className="mt-1">
+                <input
+                  type="password"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md 
+                             placeholder-gray-400 focus:outline-none focus:ring-blue-500 
+                             focus:border-blue-500 sm:text-sm"
+                  placeholder="Confirm password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter your email"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Create password"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Confirm password"
-            />
-          </div>
-
-          <div>
             <button
               type="button"
               onClick={handleFaceRegistration}
-              className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium bg-white hover:bg-gray-50"
+              className="w-full flex items-center justify-center py-2 px-4 border 
+                         border-gray-300 rounded-md shadow-sm text-sm font-medium 
+                         text-gray-700 bg-white hover:bg-gray-50 focus:outline-none 
+                         focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <span role="img" aria-label="face-id" className="mr-2">👤</span>
+              <span role="img" aria-label="face-id" className="mr-2">
+                👤
+              </span>
               Add Your FaceID (Optional)
             </button>
+
+            <button
+              type="submit"
+              className="w-full flex justify-center py-2 px-4 border border-transparent 
+                         rounded-md shadow-sm text-sm font-medium text-white 
+                         bg-gradient-to-r from-blue-600 to-purple-600 
+                         hover:from-blue-700 hover:to-purple-700 focus:outline-none 
+                         focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Create Account
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Already have an account?{" "}
+              <Link to="/" className="font-medium text-blue-600 hover:text-blue-500">
+                Login
+              </Link>
+            </p>
+            <p className="mt-2 text-xs text-gray-500">
+              By continuing, you agree to our Terms of Service
+            </p>
           </div>
-
-          <button
-            type="submit"
-            className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md shadow-sm hover:from-blue-700 hover:to-purple-700"
-          >
-            Create Account
-          </button>
-        </form>
-
-        <p className="mt-4 text-sm text-center">
-          Already have an account?{' '}
-          <Link to="/" className="text-blue-600 hover:underline">
-            Login
-          </Link>
-        </p>
+        </div>
       </div>
 
-      <video
-        id="video"
-        width="0"
-        height="0"
-        autoPlay
-        muted
-        style={{ position: 'absolute', top: '-9999px' }}
-      />
+      {showFaceModal && (
+        <Modal onClose={() => { stopVideo(); setShowFaceModal(false); }}>
+          <h3 className="text-lg font-bold mb-4">Register Your Face</h3>
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            className="w-full rounded-md"
+          />
+        </Modal>
+      )}
     </div>
   );
 };

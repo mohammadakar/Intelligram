@@ -1,4 +1,3 @@
-// Controllers/ChatController.js
 const asyncHandler = require('express-async-handler');
 const Chat         = require('../Models/Chat');
 
@@ -32,14 +31,14 @@ module.exports.getOrCreateChat = asyncHandler(async (req, res) => {
   res.json(chat);
 });
 
-// Send a message (text, image, or video)
+// Send a message (text, image, or video) - FIXED
 module.exports.sendMessage = asyncHandler(async (req, res) => {
   const { chatId }        = req.params;
-  const { content = '', mediaUrl = '' } = req.body;
+  const { content = '', media = [], type } = req.body;
 
-  if (!content.trim() && !mediaUrl) {
+  if (!content.trim() && media.length === 0) {
     res.status(400);
-    throw new Error('Either content or mediaUrl is required');
+    throw new Error('Either content or media is required');
   }
 
   const chat = await Chat.findById(chatId);
@@ -48,19 +47,26 @@ module.exports.sendMessage = asyncHandler(async (req, res) => {
     throw new Error('Chat not found');
   }
 
-  // Determine type
-  let type = 'text';
-  if (mediaUrl) {
-    if (/\.(mp4|mov|avi|webm)$/i.test(mediaUrl)) type = 'video';
-    else type = 'image';
+  // Determine type based on media if not provided
+  let actualType = type;
+  if (!actualType && media.length > 0) {
+    // Check if any media item is a video
+    const isVideo = media.some(url => /\.(mp4|mov|avi|webm)$/i.test(url));
+    actualType = isVideo ? 'video' : 'image';
+  } else if (!actualType) {
+    actualType = 'text';
   }
 
-  chat.messages.push({
+  // Create message object
+  const newMessage = {
     sender:  req.user._id,
-    type,
+    type: actualType,
     content: content.trim(),
-    media:   mediaUrl
-  });
+    media: media
+  };
+
+  // Add message to chat
+  chat.messages.push(newMessage);
   await chat.save();
 
   // Re-populate
@@ -70,8 +76,8 @@ module.exports.sendMessage = asyncHandler(async (req, res) => {
   ]);
 
   // Return the newly added message
-  const last = chat.messages[chat.messages.length - 1];
-  res.status(201).json(last);
+  const lastMessage = chat.messages[chat.messages.length - 1];
+  res.status(201).json(lastMessage);
 });
 
 // Edit a message
@@ -115,7 +121,7 @@ module.exports.deleteMessage = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error('Not authorized');
   }
-  msg.remove();
+  msg.deleteOne();
   await chat.save();
   res.json({ message: 'Message deleted' });
 });

@@ -1,9 +1,9 @@
-// src/components/StoryViewer.jsx
 import { useState, useEffect } from 'react';
 import { FaTimes, FaHeart, FaEye, FaEllipsisH } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { toast } from 'react-toastify';
 import {
   toggleStoryLike,
   viewStory,
@@ -14,17 +14,18 @@ import ReportModal from './ReportModal';
 dayjs.extend(relativeTime);
 
 const StoryViewer = ({ stories = [], user, onClose }) => {
-  const [idx, setIdx]           = useState(0);
+  const [idx, setIdx] = useState(0);
   const [viewList, setViewList] = useState(null);
   const [isPaused, setIsPaused] = useState(false);
-  const [replyText, setReplyText]= useState('');
+  const [replyText, setReplyText] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const total = stories.length;
   const dispatch = useDispatch();
   const currentUser = useSelector(s => s.auth.user);
   const isOwner = user._id === currentUser._id;
 
-  // auto‑advance & mark view
+  // Auto-advance & mark view
   useEffect(() => {
     if (total === 0 || isPaused) return;
     const sid = stories[idx]._id;
@@ -41,6 +42,7 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
   const { profilePhoto, username } = user;
   const { _id, url, caption, location, tags = [], createdAt, likes = [] } = stories[idx];
   const hasLiked = likes.includes(currentUser._id);
+  const isVideo = /\.(mp4|mov|avi|webm)$/i.test(url);
 
   const openViews = async () => {
     setIsPaused(true);
@@ -59,17 +61,39 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
     });
     setViewList(Object.values(unique));
   };
+
   const closeViews = () => {
     setViewList(null);
     setIsPaused(false);
   };
 
   const handleReply = async () => {
-    if (!replyText.trim()) return;
-    const { payload: chat } = await dispatch(getOrCreateChat(user._id));
-    if (chat?._id) {
-      await dispatch(sendMessage(chat._id, replyText, url));
-      setReplyText('');
+    if (!replyText.trim() || isSending) return;
+    
+    try {
+      setIsSending(true);
+      
+      // Create or get chat with the story owner
+      const chatResponse = await dispatch(getOrCreateChat(user._id));
+      const chat = chatResponse.payload || chatResponse.data;
+      
+      if (chat?._id) {
+        // Send message with story media
+        await dispatch(sendMessage({
+          chatId: chat._id,
+          content: replyText,
+          media: [url],
+          type: isVideo ? 'video' : 'image'
+        }));
+        
+        setReplyText('');
+        toast.success('Reply sent!');
+      }
+    } catch (error) {
+      console.error("Failed to send reply:", error);
+      toast.error('Failed to send reply');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -140,7 +164,7 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
 
         {/* media */}
         <div className="flex-grow flex items-center justify-center">
-          {/\.(mp4|mov|avi|webm)$/i.test(url) ? (
+          {isVideo ? (
             <video autoPlay loop controls className="max-h-full max-w-full">
               <source src={url} type="video/mp4" />
             </video>
@@ -166,8 +190,15 @@ const StoryViewer = ({ stories = [], user, onClose }) => {
                 className="flex-grow rounded-full px-4 py-2 text-sm bg-white"
                 value={replyText}
                 onChange={e => setReplyText(e.target.value)}
+                disabled={isSending}
               />
-              <button onClick={handleReply} className="ml-2 text-white">Reply</button>
+              <button 
+                onClick={handleReply} 
+                className="ml-2 text-white"
+                disabled={isSending}
+              >
+                {isSending ? 'Sending...' : 'Reply'}
+              </button>
               <button onClick={handleLike} className={`ml-2 text-xl ${hasLiked ? 'text-red-500' : 'text-white'}`}>
                 <FaHeart />
               </button>

@@ -1,13 +1,24 @@
+// src/components/notificationPage.jsx
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { FiThumbsUp, FiMessageCircle, FiUserPlus, FiAlertTriangle, FiEye } from 'react-icons/fi';
+import { 
+  FiThumbsUp, 
+  FiMessageCircle, 
+  FiUserPlus, 
+  FiAlertTriangle, 
+  FiEye,
+  FiCheck,
+  FiX
+} from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { fetchNotifications, markNotificationsRead } from '../redux/ApiCalls/NotificationApiCall';
+import { respondFollowRequest } from '../redux/ApiCalls/UserApiCall';
 
 export default function NotificationsPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { list } = useSelector(s => s.notification);
+  const { user } = useSelector(s => s.auth);
 
   useEffect(() => {
     dispatch(fetchNotifications());
@@ -24,9 +35,19 @@ export default function NotificationsPage() {
       case 'message':
         return navigate('/chat');
       case 'follow':
+      case 'follow_accept':
+      case 'follow_reject':
         return navigate(`/profile/${n.actor._id}`);
       default:
         return null;
+    }
+  };
+
+  const handleFollowRequest = async (requesterId, action) => {
+    try {
+      await dispatch(respondFollowRequest(requesterId, action));
+    } catch (err) {
+      console.error("Failed to respond to follow request:", err);
     }
   };
 
@@ -38,7 +59,35 @@ export default function NotificationsPage() {
       case 'follow':      return <FiUserPlus className="text-xl" />;
       case 'message':     return <FiMessageCircle className="text-xl" />;
       case 'story_like':  return <FiThumbsUp className="text-xl" />;
+      case 'follow_request': return <FiUserPlus className="text-xl text-blue-500" />;
+      case 'follow_accept':  return <FiCheck className="text-xl text-green-500" />;
+      case 'follow_reject':  return <FiX className="text-xl text-red-500" />;
       default:            return <FiEye className="text-xl" />;
+    }
+  };
+
+  const notificationText = (type) => {
+    switch (type) {
+      case 'warning': 
+        return `(Warning #${user.warnings}) We deleted your Post/Story for policy violation.`;
+      case 'like': 
+        return 'liked your post';
+      case 'comment': 
+        return 'commented on your post';
+      case 'follow': 
+        return 'started following you';
+      case 'message': 
+        return 'sent you a message';
+      case 'story_like': 
+        return 'liked your story';
+      case 'follow_request': 
+        return 'sent you a follow request';
+      case 'follow_accept': 
+        return 'accepted your follow request';
+      case 'follow_reject': 
+        return 'rejected your follow request';
+      default: 
+        return '';
     }
   };
 
@@ -51,10 +100,10 @@ export default function NotificationsPage() {
             {list?.map(n => (
               <div
                 key={n._id}
-                onClick={() => handleClick(n)}
-                className={`flex items-start p-3 rounded cursor-pointer hover:bg-white ${
+                className={`flex items-start p-3 rounded ${
                   !n.read ? 'bg-gray-100' : ''
-                }`}
+                } ${n.type !== 'follow_request' ? 'cursor-pointer hover:bg-white' : ''}`}
+                onClick={n.type !== 'follow_request' ? () => handleClick(n) : undefined}
               >
                 <img
                   src={n?.actor?.profilePhoto?.url}
@@ -66,18 +115,28 @@ export default function NotificationsPage() {
                     {iconFor(n?.type)}
                     <strong>{n.actor?.username}</strong>
                     <span className="text-gray-600">
-                      {n.type === 'warning'
-                        ? `(Warning #${n.actor.warnings}) We deleted your Post/Story for policy violation.`
-                        : ({
-                            like:       'liked your post',
-                            comment:    'commented on your post',
-                            follow:     'started following you',
-                            message:    'sent you a message',
-                            story_like: 'liked your story'
-                          })[n.type]
-                      }
+                      {notificationText(n.type, n.actor?.username)}
                     </span>
                   </div>
+                  
+                  {/* Follow Request Buttons */}
+                  {n.type === 'follow_request' && (
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => handleFollowRequest(n.actor._id, 'accept')}
+                        className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                      >
+                        <FiCheck /> Accept
+                      </button>
+                      <button
+                        onClick={() => handleFollowRequest(n.actor._id, 'reject')}
+                        className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        <FiX /> Reject
+                      </button>
+                    </div>
+                  )}
+                  
                   {n.type === 'warning' && n.mediaUrl && (
                     <img
                       src={n.mediaUrl}
