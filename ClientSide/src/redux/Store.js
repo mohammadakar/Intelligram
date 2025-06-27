@@ -5,8 +5,8 @@ import { postReducer } from "./Slices/postSlice";
 import { userReducer } from "./Slices/UserSlice";
 import { storyReducer } from "./Slices/storySlice";
 import { notificationReducer } from "./Slices/notificationSlice";
-import { chatReducer } from "./Slices/chatSlice";
 import { adminReducer } from "./Slices/adminSlice";
+import { chatReducer } from "./Slices/chatSlice";
 
 const store = configureStore({
     reducer:{
