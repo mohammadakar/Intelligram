@@ -10,12 +10,9 @@ const app = express();
 
 app.use(express.json());
 
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? ['https://intelligram.onrender.com']
-  : ['http://localhost:5173'];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: ['http://localhost:5173','https://intelligram.onrender.com'],
   credentials: true
 }));
 
