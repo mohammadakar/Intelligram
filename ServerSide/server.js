@@ -10,9 +10,20 @@ const app = express();
 
 app.use(express.json());
 
+// HTTPS redirect middleware
+app.use((req, res, next) => {
+  if (req.headers['x-forwarded-proto'] === 'https' || req.secure) {
+    return next();
+  }
+  res.redirect('https://' + req.headers.host + req.url);
+});
 
+// CORS configuration
 app.use(cors({
-  origin: ['http://localhost:5173','https://intelligram.onrender.com'],
+  origin: [
+    'http://localhost:5173',
+    'https://intelligram.onrender.com'
+  ],
   credentials: true
 }));
 
@@ -31,6 +42,7 @@ app.use('/api/notifications', require('./Routes/notificationRoutes'));
 app.use('/api/admin', require('./Routes/adminRoutes'));
 app.use('/api/reports', require('./Routes/reportRoutes'));
 
+// Static files
 const clientBuildPath = path.join(__dirname, '../ClientSide/dist');
 app.use(express.static(clientBuildPath));
 
