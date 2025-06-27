@@ -1,4 +1,3 @@
-// src/components/Chat.jsx
 import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -38,7 +37,6 @@ const Chat = () => {
   const audioChunksRef = useRef([]);
   const fileInputRef = useRef();
 
-  // Read ?user=<id> from URL and auto-open that chat
   const location = useLocation();
   useEffect(() => {
     const params = new URLSearchParams(location.search);

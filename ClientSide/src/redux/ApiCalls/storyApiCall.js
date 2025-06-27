@@ -18,15 +18,13 @@ export function getStories() {
   };
 }
 
-// uploadFiles: an array of { file, type, caption, location, tags }
 export function uploadStories(uploadFiles) {
   return async (dispatch, getState) => {
     try {
       const storage = getStorage(app);
       const uploaded = [];
 
-      // 1) upload each to Firebase
-      for (let { file, type, caption, location, tags } of uploadFiles) {
+      for (let { file, caption, location, tags } of uploadFiles) {
         const path = `stories/${Date.now()}-${file.name}`;
         const storageRef = ref(storage, path);
         const task = uploadBytesResumable(storageRef, file);
@@ -34,19 +32,23 @@ export function uploadStories(uploadFiles) {
         await new Promise((res, rej) => {
           task.on('state_changed', null, rej, async () => {
             const url = await getDownloadURL(task.snapshot.ref);
-            uploaded.push({ url, type, caption, location, tags });
+            uploaded.push({ 
+              url, 
+              type: file.type,
+              caption, 
+              location, 
+              tags 
+            });
             res();
           });
         });
       }
 
-      // 2) send to your API with metadata
       const token = getState().auth.user.token;
       await request.post('/api/stories', { stories: uploaded }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      // 3) refresh
       dispatch(getStories());
       toast.success('Stories uploaded');
     } catch (err) {
@@ -76,30 +78,46 @@ export function toggleStoryLike(storyId) {
 export function viewStory(storyId) {
   return async (dispatch, getState) => {
     try {
-      const token = getState().auth.user.token
+      const token = getState().auth.user.token;
       await request.post(
         `/api/stories/${storyId}/view`, {},
         { headers: { Authorization: `Bearer ${token}` } }
-      )
-      // no state change here
+      );
     } catch (err) {
-      toast.error("viewStory failed", err)
+      toast.error(err || "viewStory failed");
     }
-  }
+  };
 }
 
 export function fetchStoryViews(storyId) {
   return async (dispatch, getState) => {
     try {
-      const token = getState().auth.user.token
+      const token = getState().auth.user.token;
       const res = await request.get(
         `/api/stories/${storyId}/views`,
         { headers: { Authorization: `Bearer ${token}` } }
-      )
-      return res.data   // [ { _id, username, profilePhoto, viewedAt }, … ]
+      );
+      return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to fetch viewers")
-      return []
+      toast.error(err.response?.data?.error || "Failed to fetch viewers");
+      return [];
     }
-  }
+  };
+}
+
+export function deleteStory(storyId) {
+  return async (dispatch, getState) => {
+    try {
+      const token = getState().auth.user.token;
+      await request.delete(
+        `/api/stories/${storyId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      dispatch(storyActions.removeStory(storyId));
+      toast.success("Story deleted successfully");
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to delete story");
+      throw err;
+    }
+  };
 }

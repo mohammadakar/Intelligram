@@ -1,4 +1,3 @@
-// src/components/Reels.jsx
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllPosts, toggleLike } from '../redux/ApiCalls/postApiCall';
@@ -12,12 +11,10 @@ const Reels = () => {
   const { posts } = useSelector(s => s.post);
   const currentUser = useSelector(s => s.auth.user);
 
-  // grab all reels once
   useEffect(() => {
     dispatch(getAllPosts());
   }, [dispatch]);
 
-  // video refs array
   const videoRefs = useRef([]);
 
   const isVideo = url => {
@@ -28,7 +25,6 @@ const Reels = () => {
     }
   };
 
-  // only public videos
   const reels = (posts || []).filter(
     p => isVideo(p.media?.[0]) && !p.user.isAccountPrivate
   );

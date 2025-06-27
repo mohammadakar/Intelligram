@@ -1,4 +1,3 @@
-// src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 import { io } from "socket.io-client";
@@ -6,8 +5,6 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { notificationActions } from "./redux/Slices/notificationSlice";
 import { fetchNotifications } from "./redux/ApiCalls/NotificationApiCall";
-
-// Member pages
 import LoginPage       from "./components/Login";
 import RegisterPage    from "./components/Register";
 import VerifyEmail     from "./components/verifyEmail";
@@ -28,8 +25,6 @@ import Settings        from "./components/Settings";
 import Chat            from "./components/Chat";
 import NotificationsPage from "./components/NotificationsPage";
 import Nav             from "./components/Nav";
-
-// Admin pages
 import AdminLayout     from "./components/Admin/AdminLayout";
 import UsersTable      from "./components/Admin/UsersTable";
 import PostsTable      from "./components/Admin/PostsTable";
@@ -42,7 +37,6 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-    // load notifications and socket
     dispatch(fetchNotifications());
     const socket = io("http://localhost:4500", { query:{ userId: user._id } });
     socket.on("notification", notif => {

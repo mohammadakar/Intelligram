@@ -12,6 +12,8 @@
   "dependencies": {
     "@reduxjs/toolkit": "^2.5.1",
     "@tailwindcss/vite": "^4.0.7",
+    "@tensorflow/tfjs-converter": "^1.7.0",
+    "@tensorflow/tfjs-core": "^1.7.0",
     "axios": "^1.7.9",
     "dayjs": "^1.11.13",
     "face-api.js": "^0.22.2",
@@ -26,6 +28,7 @@
     "react-speech-recognition": "^3.10.0",
     "react-toastify": "^11.0.3",
     "regenerator-runtime": "^0.14.1",
+    "serverside": "file:..",
     "socket.io-client": "^4.8.1",
     "sweetalert": "^2.1.2",
     "tailwindcss": "^4.0.7"

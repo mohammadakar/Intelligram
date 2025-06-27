@@ -9,9 +9,15 @@ const SendEmail = require("../utils/SendEmail");
 // Calculate cosine similarity between two vectors
 function cosineSimilarity(a, b) {
   if (a.length === 0 || b.length === 0 || a.length !== b.length) return 0;
+  
+  // Convert Float32Array to regular array if needed
+  if (a instanceof Float32Array) a = Array.from(a);
+  if (b instanceof Float32Array) b = Array.from(b);
+  
   const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
   const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
   const normB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+  
   return dotProduct / (normA * normB);
 }
 
@@ -32,11 +38,12 @@ function generateUserResponse(user) {
     followers: user.followers,
     bio: user.bio,
     savedPosts: user.savedPosts,
+    sharedPosts: user.sharedPosts,
     isAccountPrivate: user.isAccountPrivate,
   };
 }
 
-// ─── Register ─────────────────────────────────────────────────────────────────
+//Register
 
 module.exports.RegisterUser = asyncHandler(async (req, res) => {
   const { error } = validateRegisterUser(req.body);
@@ -56,7 +63,6 @@ module.exports.RegisterUser = asyncHandler(async (req, res) => {
   });
   await user.save();
 
-  // create & email verification token
   const vtoken = new VerificationToken({
     userId: user._id,
     token: crypto.randomBytes(32).toString("hex")
@@ -69,7 +75,7 @@ module.exports.RegisterUser = asyncHandler(async (req, res) => {
   res.status(201).json({ message: "Verification email sent" });
 });
 
-// ─── Traditional Login ────────────────────────────────────────────────────────
+//Traditional Login
 
 module.exports.loginUser = asyncHandler(async (req, res) => {
   const { error } = validateLoginUser(req.body);
@@ -82,7 +88,6 @@ module.exports.loginUser = asyncHandler(async (req, res) => {
   if (!match) return res.status(400).json({ message: "Invalid email or password" });
 
   if (!user.isAccountVerified) {
-    // resend verification link
     let v = await VerificationToken.findOne({ userId: user._id });
     if (!v) {
       v = new VerificationToken({ userId: user._id, token: crypto.randomBytes(32).toString("hex") });
@@ -96,63 +101,73 @@ module.exports.loginUser = asyncHandler(async (req, res) => {
   res.status(200).json(generateUserResponse(user));
 });
 
-// ─── Face-ID Login ────────────────────────────────────────────────────────────
-
+//Face-ID Login
 module.exports.FaceIdLogin = asyncHandler(async (req, res) => {
   const { embedding } = req.body;
   if (!Array.isArray(embedding) || embedding.length === 0) {
     return res.status(400).json({ message: "Invalid face embedding" });
   }
 
-  // Get all verified users with face embeddings
   const users = await User.find({ 
     isAccountVerified: true,
     faceEmbeddings: { $exists: true, $ne: [] } 
   });
 
-  const THRESHOLD = 0.6; // Minimum similarity score
+  const THRESHOLD = 0.75;
   const matches = [];
 
   for (const user of users) {
-    const storedEmbedding = user.faceEmbeddings;
-    if (storedEmbedding && storedEmbedding.length > 0) {
-      const similarity = cosineSimilarity(embedding, storedEmbedding);
-      if (similarity > THRESHOLD) {
-        matches.push({
-          similarity,
-          user: {
-            _id: user._id,
-            username: user.username,
-            email: user.email,
-            profilePhoto: user.profilePhoto
+
+    for (const storedEmbedding of user.faceEmbeddings) {
+      if (storedEmbedding && storedEmbedding.length > 0) {
+        const similarity = cosineSimilarity(embedding, storedEmbedding);
+        if (similarity > THRESHOLD) {
+          const existingMatch = matches.find(m => m.user._id.toString() === user._id.toString());
+          if (!existingMatch || similarity > existingMatch.similarity) {
+            matches.push({
+              similarity,
+              user: {
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                profilePhoto: user.profilePhoto
+              }
+            });
           }
-        });
+        }
       }
     }
   }
+  const uniqueMatches = [];
+  matches.forEach(match => {
+    const existing = uniqueMatches.find(m => m.user._id.toString() === match.user._id.toString());
+    if (!existing || match.similarity > existing.similarity) {
+      if (existing) {
+        uniqueMatches.splice(uniqueMatches.indexOf(existing), 1);
+      }
+      uniqueMatches.push(match);
+    }
+  });
+  uniqueMatches.sort((a, b) => b.similarity - a.similarity);
 
-  // Sort by highest similarity first
-  matches.sort((a, b) => b.similarity - a.similarity);
-
-  if (matches.length === 0) {
+  if (uniqueMatches.length === 0) {
     return res.status(401).json({ message: "Face not recognized" });
   }
 
-  if (matches.length === 1) {
+  if (uniqueMatches.length === 1) {
     return res.status(200).json(generateUserResponse(
-      await User.findById(matches[0].user._id)
+      await User.findById(uniqueMatches[0].user._id)
     ));
   }
 
-  // Return multiple matches
   res.status(200).json({
     multiple: true,
-    accounts: matches.map(match => match.user)
+    accounts: uniqueMatches.map(match => match.user)
   });
 });
 
-// ─── Email Verification ───────────────────────────────────────────────────────
 
+//Verify User Account
 module.exports.verifyUserAccountCtrl = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.userId);
   if (!user) return res.status(400).json({ message: "Invalid link" });
@@ -170,7 +185,7 @@ module.exports.verifyUserAccountCtrl = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Account verified" });
 });
 
-// ─── Select from Multiple Face-ID Matches ───────────────────────────────────
+//Select from Multiple Face-ID Matches
 
 module.exports.selectAccount = asyncHandler(async (req, res) => {
   const { accountId } = req.body;

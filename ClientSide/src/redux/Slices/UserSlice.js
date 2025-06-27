@@ -5,7 +5,8 @@ const initialState = {
   userById: null,
   usersReturned:[],
   searchedUser: null,
-  savedPosts:[]
+  savedPosts:[],
+  sharedPosts: []
 };
 
 const userSlice = createSlice({
@@ -26,6 +27,9 @@ const userSlice = createSlice({
   },
   setSavedPosts(state, action) {
       state.savedPosts = action.payload;
+  },
+  setSharedPosts(state, action) {  
+      state.sharedPosts = action.payload;
   }
 }
 });

@@ -2,11 +2,10 @@ import request from '../../utils/request';
 import { toast } from 'react-toastify';
 import { chatActions } from '../Slices/chatSlice';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { app } from '../../firebase'; // Ensure this imports your Firebase app correctly
+import { app } from '../../firebase';
 
 const storage = getStorage(app);
 
-// 1) List my chats
 export function listMyChats() {
   return async (dispatch, getState) => {
     try {
@@ -23,7 +22,6 @@ export function listMyChats() {
   };
 }
 
-// 2) Get or create one-to-one chat
 export function getOrCreateChat(otherId) {
   return async (dispatch, getState) => {
     try {
@@ -31,7 +29,6 @@ export function getOrCreateChat(otherId) {
       const res = await request.get(`/api/chats/${otherId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // set this as the active chat in Redux
       dispatch(chatActions.setActiveChat(res.data));
       return res;
     } catch (err) {
@@ -41,17 +38,14 @@ export function getOrCreateChat(otherId) {
   };
 }
 
-// 3) Upload file to Firebase storage
 export function uploadFile(file) {
   return async () => {
     try {
       const path = `chat_media/${Date.now()}_${file.name}`;
       const storageRef = ref(storage, path);
-      
-      // Upload file
+
       await uploadBytes(storageRef, file);
-      
-      // Get download URL
+
       const url = await getDownloadURL(storageRef);
       return url;
     } catch (err) {
@@ -62,7 +56,6 @@ export function uploadFile(file) {
   };
 }
 
-// 4) Send a message (text, media, or audio)
 export function sendMessage({ chatId, content = '', media = [], type }) {
   return async (dispatch, getState) => {
     try {
@@ -89,7 +82,6 @@ export function sendMessage({ chatId, content = '', media = [], type }) {
   };
 }
 
-// 5) Edit a message
 export function editMessage(chatId, messageId, content) {
   return async (dispatch, getState) => {
     try {
@@ -108,7 +100,6 @@ export function editMessage(chatId, messageId, content) {
   };
 }
 
-// 6) Delete a message
 export function deleteMessage(chatId, messageId) {
   return async (dispatch, getState) => {
     try {
@@ -125,7 +116,6 @@ export function deleteMessage(chatId, messageId) {
   };
 }
 
-// 7) Delete an entire chat
 export function deleteChat(chatId) {
   return async (dispatch, getState) => {
     try {

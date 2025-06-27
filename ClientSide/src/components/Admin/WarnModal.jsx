@@ -11,7 +11,6 @@ export default function WarnModal({ report, onClose }) {
     onClose();
   };
 
-  // for preview, fetch the media URL client-side – you could also include it in `report` via populate
   const mediaUrl = report.type === 'post'
     ? report.postMedia
     : report.storyMedia;

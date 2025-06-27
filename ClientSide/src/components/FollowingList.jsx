@@ -1,4 +1,3 @@
-// src/components/FollowingList.jsx
 import { useSelector, useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { toggleFollow } from '../redux/ApiCalls/UserApiCall';

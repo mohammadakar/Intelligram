@@ -1,4 +1,3 @@
-// src/components/notificationPage.jsx
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
@@ -8,7 +7,8 @@ import {
   FiAlertTriangle, 
   FiEye,
   FiCheck,
-  FiX
+  FiX,
+  FiShare
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { fetchNotifications, markNotificationsRead } from '../redux/ApiCalls/NotificationApiCall';
@@ -62,6 +62,7 @@ export default function NotificationsPage() {
       case 'follow_request': return <FiUserPlus className="text-xl text-blue-500" />;
       case 'follow_accept':  return <FiCheck className="text-xl text-green-500" />;
       case 'follow_reject':  return <FiX className="text-xl text-red-500" />;
+      case 'share':       return <FiShare className="text-xl" />;
       default:            return <FiEye className="text-xl" />;
     }
   };
@@ -86,6 +87,8 @@ export default function NotificationsPage() {
         return 'accepted your follow request';
       case 'follow_reject': 
         return 'rejected your follow request';
+      case 'share': 
+        return 'shared your post';
       default: 
         return '';
     }

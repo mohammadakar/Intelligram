@@ -46,6 +46,11 @@ const authSlice = createSlice({
             state.user.followers = action.payload;
             localStorage.setItem("userinfo", JSON.stringify(state.user));
         },
+        setAuthSharedPosts(state, action) {  
+            if (state.user) {
+                state.user.sharedPosts = action.payload;
+            }
+        }
     },
 });
 

@@ -1,7 +1,6 @@
-// src/components/ProfilePage.jsx
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { FaCamera, FaBookmark, FaVideo } from "react-icons/fa";
+import { FaCamera, FaBookmark, FaVideo, FaShareAlt } from "react-icons/fa";
 import { FiSettings, FiEdit } from "react-icons/fi";
 import { BsGrid3X3 } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
@@ -34,6 +33,7 @@ const ProfilePage = () => {
 
   const userPosts  = posts?.filter(p => p.user?._id === user?._id);
   const savedPosts = posts?.filter(p => user?.savedPosts?.includes(p?._id));
+  const sharedPosts = posts?.filter(p => user?.sharedPosts?.includes(p?._id)); // NEW: Shared posts
 
   const handlePhotoClick = () => fileInputRef.current.click();
   const handleFileChange = async e => {
@@ -75,7 +75,11 @@ const ProfilePage = () => {
       </div>
     ) : (
       <div className="flex items-center justify-center h-48">
-        <p className="text-gray-500">{activeTab === "posts" ? "No posts yet." : "No saved posts yet."}</p>
+        <p className="text-gray-500">
+          {activeTab === "posts" && "No posts yet."}
+          {activeTab === "saved" && "No saved posts yet."}
+          {activeTab === "shared" && "No shared posts yet."} {/* NEW */}
+        </p>
       </div>
     )
   );
@@ -85,22 +89,22 @@ const ProfilePage = () => {
       {/* Profile Header */}
       <div className="flex flex-col md:flex-row items-center gap-8 mb-8">
         <div className="relative w-fit mb-4">
-  <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-gray-200">
-    <img 
-      src={user.profilePhoto.url} 
-      alt="Profile" 
-      className="w-full h-full object-cover"
-    />
-  </div>
-  <button
-    onClick={handlePhotoClick}
-    className="absolute -right-2 -bottom-2 bg-gradient-to-r from-blue-600 to-purple-600 cursor-pointer p-2 rounded-full shadow-md hover:shadow-lg transition-shadow border border-gray-200"
-    title="Change Photo"
-  >
-    <FaCamera className="text-lg text-gray-700 " />
-  </button>
-  <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
-</div>
+          <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-gray-200">
+            <img 
+              src={user.profilePhoto.url} 
+              alt="Profile" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <button
+            onClick={handlePhotoClick}
+            className="absolute -right-2 -bottom-2 bg-gradient-to-r from-blue-600 to-purple-600 cursor-pointer p-2 rounded-full shadow-md hover:shadow-lg transition-shadow border border-gray-200"
+            title="Change Photo"
+          >
+            <FaCamera className="text-lg text-gray-700" />
+          </button>
+          <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
+        </div>
 
         <div className="flex-1">
           <div className="flex items-center gap-4 mb-4">
@@ -115,6 +119,7 @@ const ProfilePage = () => {
             <Link to="/followers"><div><span className="font-semibold">{user.followers.length}</span> followers</div></Link>
             <Link to="/following"><div><span className="font-semibold">{user.following.length}</span> following</div></Link>
             <div><span className="font-semibold">{user.savedPosts.length}</span> saved</div>
+            <div><span className="font-semibold">{user.sharedPosts?.length || 0}</span> shared</div> {/* NEW */}
           </div>
 
           {/* Bio */}
@@ -158,11 +163,20 @@ const ProfilePage = () => {
         >
           <FaBookmark /> SAVED
         </button>
+        {/* NEW: Shared posts tab */}
+        <button
+          onClick={() => setActiveTab("shared")}
+          className={`flex items-center gap-2 px-4 py-3 font-semibold ${activeTab === "shared" ? "border-t border-black" : ""}`}
+        >
+          <FaShareAlt /> SHARED
+        </button>
       </div>
 
       {/* Content */}
       <div className="flex-grow">
-        {activeTab === "posts" ? renderGrid(userPosts) : renderGrid(savedPosts)}
+        {activeTab === "posts" && renderGrid(userPosts)}
+        {activeTab === "saved" && renderGrid(savedPosts)}
+        {activeTab === "shared" && renderGrid(sharedPosts)} {/* NEW */}
       </div>
     </div>
   );

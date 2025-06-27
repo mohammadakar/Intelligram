@@ -18,12 +18,10 @@ const HomePage = () => {
 
   const location = useLocation();
 
-  // Fetch feed posts
   useEffect(() => {
     dispatch(getAllPosts());
   }, [dispatch]);
 
-  // If we just navigated to /notifications, mark all as read
   useEffect(() => {
     if (location.pathname === '/notifications' && unreadCount > 0) {
       dispatch(markNotificationsRead());

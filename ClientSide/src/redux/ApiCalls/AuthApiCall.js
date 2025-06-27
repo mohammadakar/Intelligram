@@ -38,21 +38,21 @@ export function loginUser(user) {
 }
 
 export function FaceLogin({ embedding }) {
-    return async (dispatch) => {
-      try {
-        const res = await request.post("/api/auth/faceLogin", { embedding });
-        if (res.data.multiple) {
-          return { multiple: true, accounts: res.data.accounts };
-        } else {
-          dispatch(authActions.login(res.data));
-          toast.success("Logged in successfully");
-          return { multiple: false };
-        }
-      } catch (error) {
-        toast.error(error?.response?.data?.message || "Face login failed");
-        throw error;
+  return async (dispatch) => {
+    try {
+      const res = await request.post("/api/auth/faceLogin", { embedding });
+      if (res.data.multiple) {
+        return { multiple: true, accounts: res.data.accounts };
+      } else {
+        dispatch(authActions.login(res.data));
+        toast.success("Logged in successfully");
+        return { multiple: false };
       }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Face login failed");
+      throw error;
     }
+  }
 }
 
 export function verifyEmail(userId, token) {

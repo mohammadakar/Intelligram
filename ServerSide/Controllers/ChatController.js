@@ -1,7 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const Chat         = require('../Models/Chat');
 
-// List all chats for current user
 module.exports.listMyChats = asyncHandler(async (req, res) => {
   const me = req.user._id;
   let chats = await Chat.find({ participants: me })
@@ -11,7 +10,6 @@ module.exports.listMyChats = asyncHandler(async (req, res) => {
   res.json(chats);
 });
 
-// Get or create one‐to‐one chat
 module.exports.getOrCreateChat = asyncHandler(async (req, res) => {
   const me    = req.user._id.toString();
   const other = req.params.otherId;
@@ -46,10 +44,8 @@ module.exports.sendMessage = asyncHandler(async (req, res) => {
     throw new Error('Chat not found');
   }
 
-  // Determine type if not provided
   let actualType = type;
   if (!actualType && media.length > 0) {
-    // Check if any media item is a video
     const isVideo = media.some(url => /\.(mp4|mov|avi|webm)$/i.test(url));
     const isImage = media.some(url => /\.(jpg|jpeg|png|gif)$/i.test(url));
     const isAudio = media.some(url => /\.(mp3|wav|ogg)$/i.test(url));
@@ -62,7 +58,6 @@ module.exports.sendMessage = asyncHandler(async (req, res) => {
     actualType = 'text';
   }
 
-  // Create message object
   const newMessage = {
     sender:  req.user._id,
     type: actualType,
@@ -70,22 +65,18 @@ module.exports.sendMessage = asyncHandler(async (req, res) => {
     media: media
   };
 
-  // Add message to chat
   chat.messages.push(newMessage);
   await chat.save();
 
-  // Re-populate
   await chat.populate([
     { path: 'participants', select: 'username profilePhoto' },
     { path: 'messages.sender', select: 'username profilePhoto' }
   ]);
 
-  // Return the newly added message
   const lastMessage = chat.messages[chat.messages.length - 1];
   res.status(201).json(lastMessage);
 });
 
-// Edit a message
 module.exports.updateMessage = asyncHandler(async (req, res) => {
   const { chatId, messageId } = req.params;
   const { content }           = req.body;
@@ -109,7 +100,6 @@ module.exports.updateMessage = asyncHandler(async (req, res) => {
   res.json(msg);
 });
 
-// Delete (unsend) a message
 module.exports.deleteMessage = asyncHandler(async (req, res) => {
   const { chatId, messageId } = req.params;
   const chat = await Chat.findById(chatId);
@@ -131,7 +121,6 @@ module.exports.deleteMessage = asyncHandler(async (req, res) => {
   res.json({ message: 'Message deleted' });
 });
 
-// Delete an entire chat
 module.exports.deleteChat = asyncHandler(async (req, res) => {
   await Chat.findByIdAndDelete(req.params.chatId);
   res.json({ message: 'Chat deleted' });

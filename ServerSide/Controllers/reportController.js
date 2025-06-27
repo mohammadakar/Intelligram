@@ -12,7 +12,6 @@ module.exports.createReport = asyncHandler(async (req, res) => {
 });
 
 
-// Admin: list all
 module.exports.listReports = asyncHandler(async (req, res) => {
   const reports = await Report.find()
     .populate('reporter', 'username profilePhoto');

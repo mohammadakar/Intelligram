@@ -4,7 +4,6 @@ const { User }  = require('../Models/User');
 
 async function run() {
   await mongoose.connect(process.env.MONGO_URI);
-  // Only update those that don't already have savedPosts
   const res = await User.updateMany(
     { requests: { $exists: false } },
     { $set: { requests: [] } }

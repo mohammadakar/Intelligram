@@ -1,28 +1,26 @@
 const asyncHandler = require('express-async-handler');
 const Story       = require('../Models/Story');
-const { User } = require('../Models/User');
-const { createNotification } = require('./NotificationController');
+const Report      = require('../Models/Report');
+const Notification= require('../Models/Notification');
+const { User }    = require('../Models/User');
 
 module.exports.createStories = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const incoming = req.body.stories; 
-  // expected: [ { url, type, caption, location, tags: [...userIds] }, ... ]
 
   if (!Array.isArray(incoming) || incoming.length === 0) {
     return res.status(400).json({ error: 'No stories provided' });
   }
 
-  // build Story docs
   const docs = incoming.map(s => ({
     user:     userId,
     url:      s.url,
-    type:     s.type,
+    type:     s.type.startsWith('video') ? 'video' : 'image',
     caption:  s.caption || '',
     location: s.location || '',
     tags:     Array.isArray(s.tags) ? s.tags : []
   }));
 
-  // insertMany so that createdAt is set on each one
   const created = await Story.insertMany(docs);
   res.status(201).json(created);
 });
@@ -56,42 +54,62 @@ module.exports.toggleLikeStory = asyncHandler(async (req, res) => {
     story.likes.push(req.user._id);
   }
   await story.save();
-  await createNotification({
-  user: story.user,
-  actor: userId,
-  type: "story_like",
-  reference: story._id
-});
+
+  await Notification.create({
+    user: story.user,
+    actor: req.user._id,
+    type: "story_like",
+    reference: story._id
+  });
+
   res.json({ likes: story.likes });
 });
 
 module.exports.viewStory = asyncHandler(async (req, res) => {
-  const story = await Story.findById(req.params.id)
+  const story = await Story.findById(req.params.id);
   if (!story) {
-    res.status(404)
-    throw new Error("Story not found")
+    res.status(404);
+    throw new Error("Story not found");
   }
-  const uid = req.user._id.toString()
-  // only record once
+  const uid = req.user._id.toString();
   if (!story.views.some(v => v.user.toString() === uid)) {
-    story.views.push({ user: req.user._id })
-    await story.save()
+    story.views.push({ user: req.user._id });
+    await story.save();
   }
-  res.json({ message: "View recorded" })
-})
+  res.json({ message: "View recorded" });
+});
 
-// return list of users who viewed story :id
 module.exports.getStoryViews = asyncHandler(async (req, res) => {
   const story = await Story.findById(req.params.id)
-    .populate("views.user", "username profilePhoto")
+    .populate("views.user", "username profilePhoto");
   if (!story) {
-    res.status(404)
-    throw new Error("Story not found")
+    res.status(404);
+    throw new Error("Story not found");
   }
   res.json(story.views.map(v => ({
-    _id:        v.user._id,
-    username:   v.user.username,
-    profilePhoto: v.user.profilePhoto,
-    viewedAt:   v.viewedAt
-  })))
-})
+    _id:         v.user._id,
+    username:    v.user.username,
+    profilePhoto:v.user.profilePhoto,
+    viewedAt:    v.viewedAt
+  })));
+});
+
+module.exports.deleteStory = asyncHandler(async (req, res) => {
+  const story = await Story.findById(req.params.id);
+  if (!story) {
+    res.status(404);
+    throw new Error("Story not found");
+  }
+  if (story.user.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error("Not authorized to delete this story");
+  }
+
+  await Report.deleteMany({ referenceId: story._id, type: 'story' });
+
+  await Notification.deleteMany({ reference: story._id, type: { $in: ['story_like','story_report'] } });
+
+  await story.deleteOne();
+
+  res.json({ message: 'Story deleted' });
+});

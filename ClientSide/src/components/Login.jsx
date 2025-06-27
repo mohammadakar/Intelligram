@@ -13,7 +13,9 @@ const LoginPage = () => {
     const [message, setMessage] = useState('');
     const [matchedAccounts, setMatchedAccounts] = useState([]);
     const [showAccountSelector, setShowAccountSelector] = useState(false);
-    
+    const [captureCount, setCaptureCount] = useState(0);
+    const [captureProgress, setCaptureProgress] = useState(0);
+    const [isCapturing, setIsCapturing] = useState(false);
     const navigate = useNavigate();
     const videoRef = useRef();
     const dispatch = useDispatch();
@@ -52,38 +54,65 @@ const LoginPage = () => {
     };
 
     const captureFace = async () => {
-        if (!videoRef.current) return null;
-        const detection = await faceapi
-            .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
-            .withFaceLandmarks()
-            .withFaceDescriptor();
-        return detection ? Array.from(detection.descriptor) : null;
-    };
+    if (!videoRef.current) return null;
+    const detections = await faceapi
+      .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptors();
+    
+    return detections.length > 0 
+      ? detections.map(d => Array.from(d.descriptor)) 
+      : null;
+  };
 
-    const handleFaceLogin = async () => {
-        try {
-            await startVideo();
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            const embedding = await captureFace();
-            if (!embedding) {
-                setMessage("Face not detected. Please try again.");
-                stopVideo();
-                return;
-            }
-            
-            const result = await dispatch(FaceLogin({ embedding }));
-            stopVideo();
-            
-            if (result?.multiple) {
-                setMatchedAccounts(result.accounts);
-                setShowAccountSelector(true);
-            }
-        } catch (err) {
-            console.error(err);
-            setMessage("Face login failed.");
-            stopVideo();
+  const handleFaceLogin = async () => {
+    try {
+      setIsCapturing(true);
+      await startVideo();
+      
+      // Capture 3 different angles for better accuracy
+      const embeddings = [];
+      setCaptureCount(0);
+      setCaptureProgress(0);
+      
+      for (let i = 0; i < 3; i++) {
+        setCaptureProgress((i / 3) * 100);
+        await new Promise(r => setTimeout(r, 1000));
+        
+        const newEmbeddings = await captureFace();
+        if (newEmbeddings && newEmbeddings.length > 0) {
+          embeddings.push(...newEmbeddings);
+          setCaptureCount(prev => prev + 1);
         }
-    };
+      }
+      
+      if (embeddings.length === 0) {
+        setMessage("Face not detected. Please try again.");
+        stopVideo();
+        setIsCapturing(false);
+        return;
+      }
+      
+      // Use the most confident detection
+      const bestEmbedding = embeddings.reduce((best, current) => 
+        best.length > 0 && best[0].detectionScore > current.detectionScore ? best : current
+      );
+      
+      const result = await dispatch(FaceLogin({ embedding: bestEmbedding }));
+      stopVideo();
+      setIsCapturing(false);
+      
+      if (result?.multiple) {
+        setMatchedAccounts(result.accounts);
+        setShowAccountSelector(true);
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("Face login failed.");
+      stopVideo();
+      setIsCapturing(false);
+    }
+  };
 
     const handleAccountSelection = (account) => {
         dispatch(selectAccount(account));
@@ -208,6 +237,25 @@ const LoginPage = () => {
                             <p className="text-sm text-gray-600">{account.email}</p>
                         </div>
                     ))}
+                </Modal>
+            )}
+            {isCapturing && (
+                <Modal onClose={() => { stopVideo(); setIsCapturing(false); }}>
+                <h3 className="text-lg font-bold mb-4">Face Login in Progress</h3>
+                <p className="mb-2">Position your face in different angles</p>
+                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                    <div 
+                    className="bg-blue-600 h-2.5 rounded-full" 
+                    style={{ width: `${captureProgress}%` }}
+                    ></div>
+                </div>
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    muted
+                    className="w-full rounded-md"
+                />
+                <p className="mt-2">Captured {captureCount}/3 angles</p>
                 </Modal>
             )}
         </div>

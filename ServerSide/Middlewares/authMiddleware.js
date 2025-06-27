@@ -17,9 +17,8 @@ const Protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Decoded token:", decoded); // Debug: see payload
+    console.log("Decoded token:", decoded);
 
-    // Use whichever property exists: userId or id
     const userId = decoded.userId || decoded.id;
     if (!userId) {
       return res.status(401).json({ error: 'Not authorized, invalid token payload' });

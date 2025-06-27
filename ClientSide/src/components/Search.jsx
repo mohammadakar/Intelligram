@@ -1,4 +1,3 @@
-// src/components/Search.jsx
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { searchUsers } from '../redux/ApiCalls/UserApiCall';
@@ -13,7 +12,6 @@ const Search = () => {
   const { posts }       = useSelector(state => state.post);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch all posts on mount
   useEffect(() => {
     dispatch(getAllPosts());
   }, [dispatch]);
@@ -23,7 +21,6 @@ const Search = () => {
     dispatch(searchUsers(searchQuery));
   };
 
-  // Only show public posts, sorted newest first
   const publicPosts = posts
     .filter(p => p?.user?.isAccountPrivate === false)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

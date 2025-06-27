@@ -1,4 +1,3 @@
-// NominatimAutocomplete.jsx
 import { useState, useEffect } from 'react';
 
 const NominatimAutocomplete = ({ onSelect }) => {
@@ -6,7 +5,6 @@ const NominatimAutocomplete = ({ onSelect }) => {
   const [suggestions, setSuggestions] = useState([]);
 
   useEffect(() => {
-    // Only search if the query has at least 3 characters
     if (query.length < 3) {
       setSuggestions([]);
       return;
@@ -24,7 +22,6 @@ const NominatimAutocomplete = ({ onSelect }) => {
       }
     };
 
-    // Debounce API call
     const timer = setTimeout(() => {
       fetchSuggestions();
     }, 500);

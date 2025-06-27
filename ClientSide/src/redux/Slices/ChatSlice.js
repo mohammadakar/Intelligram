@@ -1,11 +1,10 @@
-// src/redux/Slices/chatSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 
 const chatSlice = createSlice({
   name: 'chat',
   initialState: {
-    list: [],          // all chats
-    activeChat: null,  // currently open chat
+    list: [],         
+    activeChat: null, 
   },
   reducers: {
     setChats(state, action) {
@@ -13,7 +12,7 @@ const chatSlice = createSlice({
     },
     setActiveChat(state, action) {
       state.activeChat = action.payload;
-      // also ensure it’s in list
+ 
       const idx = state.list.findIndex(c => c._id === action.payload._id);
       if (idx === -1) state.list.unshift(action.payload);
       else state.list[idx] = action.payload;

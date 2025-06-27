@@ -226,4 +226,4 @@ module.exports.getFeed = asyncHandler(async (req, res) => {
     .populate('user','username profilePhoto')
     .populate('comments.user','username profilePhoto');
   res.json(posts);
-});
+}); 

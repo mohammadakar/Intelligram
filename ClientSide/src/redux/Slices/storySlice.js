@@ -8,11 +8,13 @@ const storySlice = createSlice({
       state.stories = action.payload;
     },
     updateLikes(state, action) {
-    const { storyId, likes } = action.payload;
-    const s = state.stories.find(s => s._id === storyId);
-    if (s) s.likes = likes;
+      const { storyId, likes } = action.payload;
+      const s = state.stories.find(s => s._id === storyId);
+      if (s) s.likes = likes;
     },
-    
+    removeStory(state, action) {
+      state.stories = state.stories.filter(s => s._id !== action.payload);
+    },
   }
 });
 

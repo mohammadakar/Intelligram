@@ -1,4 +1,3 @@
-// PostDetails.jsx
 import {  useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -13,17 +12,7 @@ const PostDetails = () => {
   const { state } = useLocation();
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.post);
-  
-  
-  
   const following = useSelector((state) => state.auth.user.following) || [];
-  console.log(following);
-  
-  
-
-  
-  
-  
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState(''); 
   const [tags, setTags] = useState([]);
@@ -32,7 +21,6 @@ const PostDetails = () => {
 
   
   const handleLocationSelect = (suggestion) => {
-    // You can store additional details (lat, lon, etc.) if needed
     setLocation(suggestion.display_name);
   };
 
@@ -70,7 +58,7 @@ const PostDetails = () => {
           const postData = {
             caption,
             location,
-            tags, // array of user IDs selected for tagging
+            tags, 
             media: [fileUrl],
           };
 

@@ -10,7 +10,6 @@ export default function ReportModal({ referenceId, type, onClose }) {
     e.preventDefault();
     if (!description.trim()) return;
 
-    // Send referenceId, not reference
     await dispatch(submitReport({
       referenceId,
       type,

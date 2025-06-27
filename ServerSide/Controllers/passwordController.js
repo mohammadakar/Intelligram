@@ -6,21 +6,17 @@ const crypto=require("crypto")
 const SendEmail=require("../utils/SendEmail")
 
 
-//Send the reset pass link
 module.exports.sendResetPasswordLink=asyncHandler(async (req,res)=>{
-    //validation
     const {error} =validateEmail(req.body);
     if(error){
         return res.status(400).json({message:error.details[0].message})
     }
     
-    //get the user from DB by email
     const user=await User.findOne({email:req.body.email});
     if(!user){
         return res.status(404).json({message:"User with given email does not exist"})
     }
 
-    //creating verification
     let verificationToken= await VerificationToken.findOne({userId:user._id})
     if(!verificationToken){
         verificationToken=new VerificationToken({
@@ -30,21 +26,16 @@ module.exports.sendResetPasswordLink=asyncHandler(async (req,res)=>{
         await verificationToken.save();
     }
 
-    //creating link
     const link=`${process.env.CLIENT_DOMAIN}/reset-password/${user._id}/${verificationToken.token}`
 
-    //creating html template
     const htmlTemplate=`
         <a href="${link}">Click here to reset your password</a>
     `
-    //sending email
     await SendEmail(user.email,"Reset password",htmlTemplate);
 
-    //res to client
     res.status(200).json({message:"Password reset link sent to your Email"})
 })
 
-//get the reset password ctrl 
 module.exports.getResetPasswordCtrl=asyncHandler(async (req,res)=>{
     const user=await User.findById(req.params.userId)
     if(!user){
@@ -63,7 +54,6 @@ module.exports.getResetPasswordCtrl=asyncHandler(async (req,res)=>{
 
 })
 
-//reset the password
 module.exports.resetPasswordCtrl=asyncHandler(async (req,res)=>{
     const {error} =validateNewPassword(req.body);
     if(error){

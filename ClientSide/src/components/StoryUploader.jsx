@@ -33,11 +33,10 @@ const StoryUploader = ({ onClose }) => {
     if (!file) return;
     await dispatch(uploadStories([{
       file,
-      type: file.type.startsWith('video') ? 'video' : 'image',
       caption,
       location,
       tags: tags.map(t => t.value)
-    }]));
+    }])); 
     onClose();
   };
 
@@ -70,6 +69,7 @@ const StoryUploader = ({ onClose }) => {
               <video
                 src={preview}
                 controls
+                muted
                 className="w-full h-full object-contain"
               />
             ) : (

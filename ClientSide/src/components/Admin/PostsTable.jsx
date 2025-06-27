@@ -1,4 +1,3 @@
-// src/components/Admin/PostsTable.jsx
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPosts, deleteAdminPost } from '../../redux/ApiCalls/adminApiCall';
@@ -39,17 +38,17 @@ export default function PostsTable() {
             </tr>
           </thead>
           <tbody>
-            {posts.map(p => (
+            {posts?.map(p => (
               <tr key={p._id} className="border-t hover:bg-gray-50">
                 <td className="p-2 flex items-center gap-2">
                   <img
-                    src={p.user.profilePhoto.url}
-                    alt={p.user.username}
+                    src={p.user?.profilePhoto.url}
+                    alt={p.user?.username}
                     className="w-8 h-8 rounded-full object-cover"
                   />
-                  <span className="truncate">{p.user.username}</span>
+                  <span className="truncate">{p.user?.username}</span>
                 </td>
-                <td className="p-2 truncate">{p.caption || '—'}</td>
+                <td className="p-2 truncate">{p?.caption || '—'}</td>
                 <td className="p-2 text-center">
                   {isVideo(p.media[0])
                     ? (
@@ -67,8 +66,8 @@ export default function PostsTable() {
                       />
                     )}
                 </td>
-                <td className="p-2 text-center">{p.likes.length}</td>
-                <td className="p-2 text-center">{p.comments.length}</td>
+                <td className="p-2 text-center">{p?.likes.length}</td>
+                <td className="p-2 text-center">{p?.comments.length}</td>
                 <td className="p-2 text-center space-x-1">
                   <Link
                     to={`/post/${p._id}`}

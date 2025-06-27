@@ -1,4 +1,3 @@
-// src/components/CreatePost.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowRight } from 'react-icons/fa';

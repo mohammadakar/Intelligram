@@ -97,7 +97,6 @@ export function addComment(postId, text) {
         { text },
         { headers: { Authorization: "Bearer " + getState().auth.user.token } }
       );
-      // add to postComments and to the single post object
       dispatch(postActions.addComment(res.data));
       dispatch(
         postActions.addCommentToPost({ postId, comment: res.data })
@@ -108,7 +107,6 @@ export function addComment(postId, text) {
   };
 }
 
-// Edit a comment
 export function editComment(postId, commentId, text) {
   return async (dispatch, getState) => {
     try {

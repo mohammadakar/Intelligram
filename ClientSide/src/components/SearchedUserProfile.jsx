@@ -1,11 +1,10 @@
-// src/components/SearchedUserProfile.jsx
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { SearchedUser, toggleFollow } from "../redux/ApiCalls/UserApiCall";
 import { getAllPosts } from "../redux/ApiCalls/postApiCall";
 import { BsGrid3X3 } from "react-icons/bs";
-import { FaVideo, FaEnvelope } from "react-icons/fa";
+import { FaVideo, FaEnvelope, FaShareAlt } from "react-icons/fa";
 import videoPoster from "../vidimage/vd2.avif";
 
 const SearchedUserProfile = () => {
@@ -17,6 +16,7 @@ const SearchedUserProfile = () => {
   const currentUser = useSelector((state) => state.auth.user);
 
   const [followState, setFollowState] = useState("loading");
+  const [activeTab, setActiveTab] = useState("posts"); // NEW: Active tab state
 
   useEffect(() => {
     dispatch(SearchedUser(userid));
@@ -60,6 +60,10 @@ const SearchedUserProfile = () => {
   const userPosts = posts.filter(
     (post) => post.user?._id === searchedUser._id
   );
+  
+  const sharedPosts = posts.filter(
+    (post) => searchedUser.sharedPosts?.includes(post._id)
+  );
 
   const isVideo = (url) => {
     if (!url) return false;
@@ -70,8 +74,52 @@ const SearchedUserProfile = () => {
     }
   };
 
-  const hidePosts =
+  const hideContent =
     searchedUser.isAccountPrivate && followState !== "following";
+
+  const renderGrid = (items) => (
+    items.length > 0 ? (
+      <div className="grid grid-cols-3 gap-1 md:gap-6">
+        {items.map((post) => (
+          <Link
+            to={`/post/${post._id}`}
+            className="aspect-square relative group"
+            key={post._id}
+          >
+            {isVideo(post.media[0]) ? (
+              <video
+                className="w-full h-full object-cover"
+                src={post.media[0]}
+                poster={videoPoster}
+                muted
+                preload="metadata"
+              />
+            ) : (
+              <img
+                src={post.media[0]}
+                alt="post"
+                className="w-full h-full object-cover"
+              />
+            )}
+            {isVideo(post.media[0]) && (
+              <FaVideo className="absolute top-2 right-2 text-white text-2xl drop-shadow-lg" />
+            )}
+            <div className="hidden group-hover:flex absolute inset-0 bg-black/50 items-center justify-center gap-6 text-white">
+              <span>❤️ {post.likes?.length || 0}</span>
+              <span>💬 {post.comments?.length || 0}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    ) : (
+      <div className="flex items-center justify-center h-48">
+        <p className="text-gray-500">
+          {activeTab === "posts" && "No posts yet."}
+          {activeTab === "shared" && "No shared posts yet."}
+        </p>
+      </div>
+    )
+  );
 
   return (
     <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 py-4 bg-white">
@@ -83,7 +131,6 @@ const SearchedUserProfile = () => {
             alt={searchedUser.username}
             className="w-full h-full object-cover"
           />
-          
         </div>
         <div className="flex-1">
           {/* Username + button */}
@@ -125,7 +172,6 @@ const SearchedUserProfile = () => {
                   <FaEnvelope />
                 </button>
               )}
-              
           </div>
           {/* Stats */}
           <div className="flex gap-8 mb-4">
@@ -147,6 +193,13 @@ const SearchedUserProfile = () => {
               </span>{" "}
               following
             </div>
+            {/* NEW: Shared posts count */}
+            <div>
+              <span className="font-semibold">
+                {searchedUser.sharedPosts?.length || 0}
+              </span>{" "}
+              shared
+            </div>
           </div>
           {/* Bio */}
           <p className="whitespace-pre-line">
@@ -157,62 +210,43 @@ const SearchedUserProfile = () => {
 
       {/* Tabs */}
       <div className="flex justify-center border-t mb-4">
-        <button className="flex items-center gap-2 px-4 py-4 border-t border-black font-semibold">
-          <BsGrid3X3 />
-          POSTS
+        <button
+          onClick={() => setActiveTab("posts")}
+          className={`flex items-center gap-2 px-4 py-3 font-semibold ${
+            activeTab === "posts" ? "border-t border-black" : ""
+          }`}
+        >
+          <BsGrid3X3 /> POSTS
+        </button>
+        {/* NEW: Shared posts tab */}
+        <button
+          onClick={() => setActiveTab("shared")}
+          className={`flex items-center gap-2 px-4 py-3 font-semibold ${
+            activeTab === "shared" ? "border-t border-black" : ""
+          }`}
+        >
+          <FaShareAlt /> SHARED
         </button>
       </div>
 
-      {/* Posts Grid or “Private” message */}
+      {/* Posts Grid or "Private" message */}
       <div className="flex-grow">
-        {hidePosts ? (
+        {hideContent ? (
           <div className="flex items-center justify-center h-48">
             <p className="text-gray-500 text-center">
               This account is private.{" "}
               {followState === "not_following"
-                ? "Send a follow request to see posts."
+                ? "Send a follow request to see content."
                 : followState === "requested"
                 ? "Follow request pending."
                 : ""}
             </p>
           </div>
-        ) : userPosts.length > 0 ? (
-          <div className="grid grid-cols-3 gap-1 md:gap-6">
-            {userPosts.map((post) => (
-              <Link
-                to={`/post/${post._id}`}
-                className="aspect-square relative group"
-                key={post._id}
-              >
-                {isVideo(post.media[0]) ? (
-                  <video
-                    className="w-full h-full object-cover"
-                    src={post.media[0]}
-                    poster={videoPoster}
-                    muted
-                    preload="metadata"
-                  />
-                ) : (
-                  <img
-                    src={post.media[0]}
-                    alt="post"
-                    className="w-full h-full object-cover"
-                  />
-                )}
-                {isVideo(post.media[0]) && (
-                  <FaVideo className="absolute top-2 right-2 text-white text-2xl drop-shadow-lg" />
-                )}
-                <div className="hidden group-hover:flex absolute inset-0 bg-black/50 items-center justify-center gap-6 text-white">
-                  <span>❤️ {post.likes?.length || 0}</span>
-                  <span>💬 {post.comments?.length || 0}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
         ) : (
-          <div className="flex items-center justify-center h-48">
-            <p className="text-gray-500">No posts yet.</p>
-          </div>
+          <>
+            {activeTab === "posts" && renderGrid(userPosts)}
+            {activeTab === "shared" && renderGrid(sharedPosts)}
+          </>
         )}
       </div>
     </div>

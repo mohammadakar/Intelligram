@@ -1,4 +1,3 @@
-// src/components/RegisterPage.jsx
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as faceapi from "face-api.js";
@@ -13,7 +12,7 @@ const RegisterPage = () => {
   const [email, setEmail]                 = useState("");
   const [password, setPassword]           = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [faceEmbeddings, setFaceEmbeddings]   = useState(null);
+  const [faceEmbeddings, setFaceEmbeddings] = useState([]);
   const [showFaceModal, setShowFaceModal]     = useState(false);
   const videoRef = useRef();
 
@@ -33,12 +32,15 @@ const RegisterPage = () => {
     }
   };
 
-  const captureFace = async () => {
-    const detection = await faceapi
-      .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+   const captureFace = async () => {
+    const detections = await faceapi
+      .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks()
-      .withFaceDescriptor();
-    return detection ? Array.from(detection.descriptor) : null;
+      .withFaceDescriptors();
+    
+    return detections.length > 0 
+      ? detections.map(d => Array.from(d.descriptor)) 
+      : null;
   };
 
   const handleFaceRegistration = async () => {
@@ -52,13 +54,22 @@ const RegisterPage = () => {
           resolve();
         };
       });
-      await new Promise((r) => setTimeout(r, 1000));
-      const embedding = await captureFace();
+
+      const embeddings = [];
+      for (let i = 0; i < 3; i++) {
+        await new Promise(r => setTimeout(r, 1000)); // Wait between captures
+        const newEmbeddings = await captureFace();
+        if (newEmbeddings && newEmbeddings.length > 0) {
+          embeddings.push(...newEmbeddings);
+        }
+      }
+      
       stopVideo();
       setShowFaceModal(false);
-      if (embedding) {
-        setFaceEmbeddings(embedding);
-        toast.success("Face registered successfully!");
+      
+      if (embeddings.length > 0) {
+        setFaceEmbeddings(embeddings);
+        toast.success(`Captured ${embeddings.length} face embeddings successfully!`);
       } else {
         toast.error("No face detected, please try again.");
       }
