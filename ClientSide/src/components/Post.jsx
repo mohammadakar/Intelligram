@@ -245,10 +245,10 @@ export default function Post() {
       {/* MEDIA */}
       <div>
         {isVideo(post.media[0])
-          ? <video controls className="w-full rounded-lg">
+          ? <video controls className="w-full h-96 rounded-lg">
             <source src={post.media[0]} type="video/mp4" />
           </video>
-          : <img src={post.media[0]} alt="Post" className="w-full rounded-lg object-contain" />
+          : <img src={post.media[0]} alt="Post" className="w-full h-96 rounded-lg object-contain" />
         }
       </div>
 

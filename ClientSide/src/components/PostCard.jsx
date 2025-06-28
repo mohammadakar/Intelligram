@@ -141,12 +141,12 @@ const PostCard = ({ post, refreshPosts }) => {
       </div>
 
       {/* media */}
-      <div className="w-full h-64 bg-black flex items-center justify-center">
+      <div className="w-full h-96 bg-violet-100 flex items-center justify-center">
         {isVideo(post.media[0]) ? (
           <video
             src={post.media[0]}
             controls
-            className="max-h-full max-w-full object-contain"
+            className="max-h-full w-full object-contain"
           />
         ) : (
           <img

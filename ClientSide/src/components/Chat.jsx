@@ -164,7 +164,7 @@ const Chat = () => {
       console.error("Error sending file:", err);
     } finally {
       setIsUploading(false);
-      e.target.value = ""; // Reset file input
+      e.target.value = ""; 
     }
   };
 
